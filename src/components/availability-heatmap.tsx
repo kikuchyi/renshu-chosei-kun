@@ -82,27 +82,38 @@ export function AvailabilityHeatmap({
     const handleToday = () => setCurrentDate(new Date())
 
     // Fetch calendar events for current week and sync to DB
-    useEffect(() => {
-        const fetchEvents = async () => {
-            try {
-                const start = weekDays[0].toISOString()
-                const end = addDays(weekDays[6], 2).toISOString()
-                const result = await fetchCalendarEvents(start, end)
+    const fetchEvents = async () => {
+        setSyncStatus(prev => ({ ...prev, loading: true }))
+        try {
+            const start = weekDays[0].toISOString()
+            const end = addDays(weekDays[6], 2).toISOString()
+            const result: any = await fetchCalendarEvents(start, end)
 
-                // If it's the old array response, handle it (though we just updated it)
-                if (Array.isArray(result)) {
-                    setCalendarEvents(result)
-                } else {
-                    setCalendarEvents(result.events)
-                    // If new data was synced, refresh the page to get updated busySlots from Props
-                    if (result.synced) {
-                        router.refresh()
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to fetch calendar events:', error)
+            setCalendarEvents(result.events || [])
+            setSyncStatus({
+                loading: false,
+                synced: result.synced || false,
+                count: result.syncedCount || 0,
+                hasToken: result.hasToken ?? true,
+                error: result.error
+            })
+
+            if (result.synced) {
+                router.refresh()
             }
+        } catch (error: any) {
+            console.error('Failed to fetch calendar events:', error)
+            setSyncStatus({
+                loading: false,
+                synced: false,
+                count: 0,
+                hasToken: true,
+                error: '通信エラーが発生しました'
+            })
         }
+    }
+
+    useEffect(() => {
         fetchEvents()
     }, [currentDate])
 
