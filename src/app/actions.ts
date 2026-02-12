@@ -1,8 +1,31 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+
+export async function updateProfile(formData: FormData) {
+    const displayName = formData.get('displayName') as string
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('ログインが必要です')
+    }
+
+    const { error } = await supabase
+        .from('users')
+        .update({ display_name: displayName })
+        .eq('id', user.id)
+
+    if (error) {
+        console.error('Error updating profile:', error)
+        throw new Error('プロフィールの更新に失敗しました')
+    }
+
+    revalidatePath('/', 'layout')
+    return { success: true }
+}
 
 export async function createGroup(formData: FormData) {
     const supabase = await createClient()

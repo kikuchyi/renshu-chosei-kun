@@ -17,7 +17,14 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs"
 
-export default function LoginPage() {
+interface PageProps {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function LoginPage(props: PageProps) {
+    const searchParams = await props.searchParams
+    const error = searchParams.error as string | undefined
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <Card className="w-[400px]">
@@ -28,6 +35,11 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md">
+                            エラー: {error}
+                        </div>
+                    )}
                     <form action={signInWithGoogle}>
                         <Button type="submit" variant="outline" className="w-full py-6 text-lg font-medium border-2 hover:bg-gray-50">
                             <svg className="mr-2 h-5 w-5" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">

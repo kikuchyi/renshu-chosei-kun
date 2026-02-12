@@ -1,5 +1,7 @@
-import { createClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import {
     Card,
@@ -11,36 +13,26 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { revalidatePath } from 'next/cache'
+import { updateProfile } from '@/app/actions'
+import { toast } from 'sonner'
 
-export default async function SetupProfilePage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+export default function SetupProfilePage() {
+    const router = useRouter()
+    const [isLoading, setIsLoading] = useState(false)
 
-    if (!user) {
-        redirect('/login')
-    }
-
-    async function updateProfile(formData: FormData) {
-        'use server'
-        const displayName = formData.get('displayName') as string
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) return
-
-        const { error } = await supabase
-            .from('users')
-            .update({ display_name: displayName })
-            .eq('id', user.id)
-
-        if (error) {
+    async function handleSubmit(formData: FormData) {
+        setIsLoading(true)
+        try {
+            await updateProfile(formData)
+            toast.success('プロフィールを更新しました')
+            router.push('/')
+            router.refresh()
+        } catch (error) {
             console.error('Error updating profile:', error)
-            return
+            toast.error(error instanceof Error ? error.message : 'エラーが発生しました')
+        } finally {
+            setIsLoading(false)
         }
-
-        revalidatePath('/', 'layout')
-        redirect('/')
     }
 
     return (
@@ -52,17 +44,18 @@ export default async function SetupProfilePage() {
                         アプリ内で表示されるユーザー名を設定してください。
                     </CardDescription>
                 </CardHeader>
-                <form action={updateProfile}>
+                <form action={handleSubmit}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="displayName">ユーザー名</Label>
                             <Input
                                 id="displayName"
                                 name="displayName"
-                                placeholder="例: Yamada Tarou"
+                                placeholder="例: 山田 太郎"
                                 required
                                 minLength={2}
                                 maxLength={20}
+                                disabled={isLoading}
                             />
                             <p className="text-xs text-muted-foreground">
                                 この名前はグループのメンバー一覧に表示されます。
@@ -70,7 +63,9 @@ export default async function SetupProfilePage() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                        <Button type="submit" className="w-full">はじめる</Button>
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading ? '保存中...' : 'はじめる'}
+                        </Button>
                     </CardFooter>
                 </form>
             </Card>

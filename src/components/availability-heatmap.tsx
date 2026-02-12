@@ -417,8 +417,8 @@ export function AvailabilityHeatmap({
                     </div>
 
                     {viewMode === 'week' ? (
-                        <div className="w-full">
-                            <div className="w-full min-w-[350px]">
+                        <div className="w-full overflow-x-auto pb-4">
+                            <div className="min-w-[600px]">
                                 {/* Header Row */}
                                 <div className="grid grid-cols-8 gap-1 mb-2">
                                     <div className="p-2 text-center text-gray-500 text-xs font-medium pt-8">

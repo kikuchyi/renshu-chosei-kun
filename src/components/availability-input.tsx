@@ -281,8 +281,8 @@ export function AvailabilityInput({
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="w-full">
-                    <div className="w-full min-w-[350px]">
+                <div className="w-full overflow-x-auto pb-4">
+                    <div className="min-w-[700px]">
                         <div className="grid grid-cols-8 gap-1 mb-2">
                             <div className="text-xs text-gray-500 text-center pt-2">時間</div>
                             {weekDays.map(day => (
@@ -294,11 +294,11 @@ export function AvailabilityInput({
                                         <div>{format(day, 'M/d', { locale: ja })}</div>
                                         <div className="text-xs">{format(day, 'E', { locale: ja })}</div>
                                     </div>
-                                    <div className="flex gap-1 justify-center">
+                                    <div className="flex flex-col gap-1 justify-center mt-1">
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            className="h-6 px-2 text-xs"
+                                            className="h-6 px-1 text-[10px]"
                                             onClick={() => handleBulkToggle(day, 1)}
                                             disabled={isPending}
                                         >
@@ -307,7 +307,7 @@ export function AvailabilityInput({
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            className="h-6 px-2 text-xs"
+                                            className="h-6 px-1 text-[10px]"
                                             onClick={() => handleBulkToggle(day, null)}
                                             disabled={isPending}
                                         >
@@ -325,26 +325,13 @@ export function AvailabilityInput({
                                         {hour}:00
                                     </div>
                                     {weekDays.map(day => {
-                                        // Adjust date for late night hours (24, 25, etc.)
-                                        // Actually the loop generates `day` as Mon, Tue...
-                                        // And `hour` as 5...29.
-                                        // If hour >= 24, it means "Next Day's early morning".
-                                        // But visually we want to keep it in the "same column" as the previous day.
-                                        // logic `new Date(day)` creates 00:00 of that day.
-                                        // `start.setHours(hour)` handles overflow correctly (e.g. 25 -> 1:00 next day).
-                                        // So the timestamp calculation is correct.
-
                                         const priority = getPriority(day, hour)
                                         const count = getAvailabilityCount(day, hour)
                                         const busy = isBusy(day, hour)
 
-                                        // Determine if this slot is being dragged-selected
                                         const slotId = `${day.toISOString()}-${hour}`
                                         const isSelected = selectedSlotIds.has(slotId)
 
-                                        // For display, if selected, show based on dragMode
-                                        // If dragMode is 'add', show as priority 1 (yellow)
-                                        // If dragMode is 'remove', show as null (white)
                                         let displayPriority = priority
                                         if (isDragging && isSelected) {
                                             displayPriority = dragMode === 'add' ? 1 : null
@@ -355,7 +342,7 @@ export function AvailabilityInput({
                                                 key={`${day}-${hour}`}
                                                 onMouseDown={() => handleDragStart(day, hour)}
                                                 onMouseEnter={() => handleDragEnter(day, hour)}
-                                                onClick={() => !isDragging && handleToggle(day, hour)} // Keep click for simple toggle if no drag
+                                                onClick={() => !isDragging && handleToggle(day, hour)}
                                                 disabled={isPending}
                                                 className={cn(
                                                     "rounded-md border text-xs flex items-center justify-center transition-colors relative select-none",
