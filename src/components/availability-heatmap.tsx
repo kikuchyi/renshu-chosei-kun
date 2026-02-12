@@ -348,8 +348,11 @@ export function AvailabilityHeatmap({
 
     // Handle cell click for toggling practice event
     const handleCellClick = (date: Date, hour: number, minute: number) => {
+        const practiceId = getPracticeEventId(date, hour, minute)
         const busy = isBusy(date, hour, minute)
-        if (busy) return
+
+        // If not a confirmed practice and is busy, prevent adding new practice
+        if (!practiceId && busy) return
 
         startTransition(async () => {
             try {
@@ -568,12 +571,12 @@ export function AvailabilityHeatmap({
                                                         onClick={() => !isDragging && handleCellClick(day, hour, minute)}
                                                         className={cn(
                                                             "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center",
-                                                            intensityClass,
-                                                            (isPractice && !(isDragging && dragMode === 'remove' && selectedDragSlotIds.has(slotId))) && "bg-green-500 border-green-600 cursor-pointer hover:bg-green-600 z-10",
-                                                            (isDragging && dragMode === 'add' && selectedDragSlotIds.has(slotId)) && "bg-green-500 border-green-600"
+                                                            isPractice ? "bg-green-500 border-green-600 hover:bg-green-600 z-10" : intensityClass,
+                                                            (isDragging && dragMode === 'remove' && isPractice && selectedDragSlotIds.has(slotId)) && "opacity-50",
+                                                            (isDragging && dragMode === 'add' && !isPractice && selectedDragSlotIds.has(slotId)) && "bg-green-500 border-green-600"
                                                         )}
                                                         title={
-                                                            isPractice ? "決定済みの練習予定 (クリックで解除)" :
+                                                            isPractice ? (busy ? "決定済みの練習予定 (競合あり - クリックで解除)" : "決定済みの練習予定 (クリックで解除)") :
                                                                 busy ? "予定あり" :
                                                                     `${format(day, 'M/d')} ${hour}:${minute === 0 ? '00' : '30'} - スコア: ${score}`
                                                         }
