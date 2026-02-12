@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { GroupMemberList } from '@/components/group-member-list'
+import { GroupTimeSettings } from '@/components/group-time-settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,6 +82,15 @@ export default async function GroupPage(props: PageProps) {
                         <h1 className="text-2xl font-bold tracking-tight">{group.name}</h1>
                         <p className="text-sm text-gray-500">招待コード: {group.invite_code}</p>
                     </div>
+                    {group.created_by === user.id && (
+                        <div className="flex gap-2">
+                            <GroupTimeSettings
+                                groupId={group.id}
+                                initialStartHour={group.start_hour}
+                                initialEndHour={group.end_hour}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-8">
@@ -95,6 +105,9 @@ export default async function GroupPage(props: PageProps) {
                             userId={user.id}
                             availabilities={availabilities || []}
                             groupBusySlots={busySlots || []}
+                            calendarEvents={[]} // Fetch on client side as before
+                            startHour={group.start_hour}
+                            endHour={group.end_hour}
                         />
                     </section>
 
@@ -102,10 +115,12 @@ export default async function GroupPage(props: PageProps) {
                         <section>
                             <AvailabilityHeatmap
                                 availabilities={availabilities || []}
-                                totalMembers={members?.length || 0}
                                 groupId={group.id}
                                 practiceEvents={practiceEvents || []}
                                 busySlots={busySlots || []}
+                                calendarEvents={[]} // Fetch on client side as before
+                                startHour={group.start_hour}
+                                endHour={group.end_hour}
                             />
                         </section>
                     </div>

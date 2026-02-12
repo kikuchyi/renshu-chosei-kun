@@ -26,27 +26,30 @@ type PracticeEvent = Database['public']['Tables']['practice_events']['Row']
 type BusySlot = Database['public']['Tables']['user_busy_slots']['Row']
 
 interface AvailabilityHeatmapProps {
-    availabilities: Availability[]
-    totalMembers: number // To calculate intensity
     groupId: string
-    practiceEvents: PracticeEvent[]
-    busySlots: BusySlot[]
+    availabilities: Availability[]
+    practiceEvents: (Database['public']['Tables']['practice_events']['Row'])[]
+    busySlots: Database['public']['Tables']['user_busy_slots']['Row'][]
+    calendarEvents: any[]
+    startHour: number
+    endHour: number
 }
 
-const START_HOUR = 5
-const END_HOUR = 29
+const INTENSITY_LEVELS = 5
 
 export function AvailabilityHeatmap({
-    availabilities,
-    totalMembers,
     groupId,
+    availabilities,
     practiceEvents,
     busySlots,
+    calendarEvents,
+    startHour,
+    endHour,
 }: AvailabilityHeatmapProps) {
     const router = useRouter()
     console.log('AvailabilityHeatmap Rendered - v1.5.2 - busySlots count:', busySlots.length)
     const [currentDate, setCurrentDate] = useState(new Date())
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
+    const [localCalendarEvents, setLocalCalendarEvents] = useState<CalendarEvent[]>([])
     const [syncStatus, setSyncStatus] = useState<{
         loading: boolean;
         synced: boolean;
@@ -65,9 +68,9 @@ export function AvailabilityHeatmap({
 
     const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 })
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i))
-    const timeSlots = Array.from({ length: (END_HOUR - START_HOUR) * 2 }, (_, i) => {
+    const timeSlots = Array.from({ length: (endHour - startHour) * 2 }, (_, i) => {
         const totalMinutes = i * 30
-        const hour = START_HOUR + Math.floor(totalMinutes / 60)
+        const hour = startHour + Math.floor(totalMinutes / 60)
         const minute = totalMinutes % 60
         return { hour, minute }
     })
@@ -95,7 +98,7 @@ export function AvailabilityHeatmap({
             const end = addDays(weekDays[6], 2).toISOString()
             const result: any = await fetchCalendarEvents(start, end)
 
-            setCalendarEvents(result.events || [])
+            setLocalCalendarEvents(result.events || [])
             setSyncStatus({
                 loading: false,
                 synced: result.synced || false,
@@ -182,7 +185,7 @@ export function AvailabilityHeatmap({
     // Get total score for a day (for monthly view)
     const getDayScore = (date: Date) => {
         let totalScore = 0
-        for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+        for (let hour = startHour; hour < endHour; hour++) {
             totalScore += getScore(date, hour, 0)
             totalScore += getScore(date, hour, 30)
         }

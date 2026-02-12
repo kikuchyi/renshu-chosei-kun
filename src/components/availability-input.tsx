@@ -24,22 +24,24 @@ interface AvailabilityInputProps {
     groupId: string
     userId: string
     availabilities: Availability[]
-    groupBusySlots: Database['public']['Tables']['user_busy_slots']['Row'][]
+    calendarEvents: any[]
+    groupBusySlots: { user_id: string; start_time: string; end_time: string }[]
+    startHour: number
+    endHour: number
 }
-
-// 5:00 to 29:00 (5:00 next day)
-const START_HOUR = 5
-const END_HOUR = 29
 
 export function AvailabilityInput({
     groupId,
     userId,
     availabilities,
+    calendarEvents: initialCalendarEvents, // Renamed to avoid conflict with state
     groupBusySlots,
+    startHour,
+    endHour,
 }: AvailabilityInputProps) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [isPending, startTransition] = useTransition()
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(initialCalendarEvents) // Initialize state with prop
     const [isLoadingCalendar, setIsLoadingCalendar] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
@@ -50,9 +52,9 @@ export function AvailabilityInput({
 
     const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 }) // Monday start
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i))
-    const timeSlots = Array.from({ length: (END_HOUR - START_HOUR) * 2 }, (_, i) => {
+    const timeSlots = Array.from({ length: (endHour - startHour) * 2 }, (_, i) => {
         const totalMinutes = i * 30
-        const hour = START_HOUR + Math.floor(totalMinutes / 60)
+        const hour = startHour + Math.floor(totalMinutes / 60)
         const minute = totalMinutes % 60
         return { hour, minute }
     })

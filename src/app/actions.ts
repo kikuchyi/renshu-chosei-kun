@@ -241,16 +241,24 @@ export async function bulkToggleAvailability(
         throw new Error('グループメンバーではありません')
     }
 
-    const START_HOUR = 5
-    const END_HOUR = 29
+    // Fetch group settings for time range
+    const { data: group } = await supabase
+        .from('groups')
+        .select('start_hour, end_hour')
+        .eq('id', groupId)
+        .single()
+
+    const startHour = group?.start_hour ?? 5
+    const endHour = group?.end_hour ?? 29
+
     const targetDate = new Date(date)
 
     if (priority === null) {
         // Delete all availabilities for this day
         const startTime = new Date(targetDate)
-        startTime.setHours(START_HOUR, 0, 0, 0)
+        startTime.setHours(startHour, 0, 0, 0)
         const endTime = new Date(targetDate)
-        endTime.setHours(END_HOUR, 0, 0, 0)
+        endTime.setHours(endHour, 0, 0, 0)
 
         const { error } = await supabase
             .from('availabilities')
@@ -267,7 +275,7 @@ export async function bulkToggleAvailability(
     } else {
         // Add availabilities for all 30-minute slots in the day
         const availabilities = []
-        for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+        for (let hour = startHour; hour < endHour; hour++) {
             for (let minute of [0, 30]) {
                 const start = new Date(targetDate)
                 start.setHours(hour, minute, 0, 0)
@@ -290,9 +298,9 @@ export async function bulkToggleAvailability(
 
         // First delete existing ones to avoid conflicts
         const startTime = new Date(targetDate)
-        startTime.setHours(START_HOUR, 0, 0, 0)
+        startTime.setHours(startHour, 0, 0, 0)
         const endTime = new Date(targetDate)
-        endTime.setHours(END_HOUR, 0, 0, 0)
+        endTime.setHours(endHour, 0, 0, 0)
 
         await supabase
             .from('availabilities')
@@ -572,6 +580,43 @@ export async function leaveGroup(groupId: string) {
 
     revalidatePath('/')
     redirect('/')
+}
+
+export async function updateGroupTimeRange(groupId: string, startHour: number, endHour: number) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('認証されていません')
+    }
+
+    // Verify ownership
+    const { data: group, error: groupError } = await supabase
+        .from('groups')
+        .select('created_by')
+        .eq('id', groupId)
+        .single()
+
+    if (groupError || !group) {
+        throw new Error('グループが見つかりません')
+    }
+
+    if (group.created_by !== user.id) {
+        throw new Error('設定を変更する権限がありません')
+    }
+
+    const { error } = await supabase
+        .from('groups')
+        .update({ start_hour: startHour, end_hour: endHour })
+        .eq('id', groupId)
+
+    if (error) {
+        console.error('Error updating group time range:', error)
+        throw new Error('表示時間帯の更新に失敗しました')
+    }
+
+    revalidatePath(`/groups/${groupId}`)
+    return { success: true }
 }
 
 export async function deleteGroup(groupId: string) {
