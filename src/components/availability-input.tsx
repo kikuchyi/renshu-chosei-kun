@@ -59,12 +59,13 @@ export function AvailabilityInput({
         try {
             const start = weekDays[0].toISOString()
             const end = addDays(weekDays[6], 2).toISOString() // Fetch a bit more to cover late night
-            const events = await fetchCalendarEvents(start, end)
+            const result: any = await fetchCalendarEvents(start, end)
+            const events = result.events || []
             setCalendarEvents(events)
             if (events.length > 0) {
                 toast.success('Googleカレンダーの予定を取得しました')
             } else {
-                toast.info('予定が見つかりませんでした（または連携されていません）')
+                toast.info(result.error || '予定が見つかりませんでした（または連携されていません）')
             }
         } catch (error) {
             console.error(error)
