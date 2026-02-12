@@ -54,11 +54,11 @@ export function GroupMemberList({ groupId, currentUserId, members }: GroupMember
                 {members.map((member) => (
                     <div key={member.user_id} className="relative group">
                         <Avatar className="inline-block h-10 w-10 rounded-full ring-2 ring-white cursor-help">
-                            <AvatarImage src={member.users.avatar_url || ''} />
-                            <AvatarFallback>{member.users.display_name?.[0] || '?'}</AvatarFallback>
+                            <AvatarImage src={member.users?.avatar_url || ''} />
+                            <AvatarFallback>{member.users?.display_name?.[0] || '?'}</AvatarFallback>
                         </Avatar>
                         <span className="absolute bottom-full left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none mb-1">
-                            {member.users.display_name}
+                            {member.users?.display_name || '不明なユーザー'}
                         </span>
                     </div>
                 ))}
