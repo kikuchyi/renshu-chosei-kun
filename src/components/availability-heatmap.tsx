@@ -46,6 +46,13 @@ export function AvailabilityHeatmap({
     const router = useRouter()
     const [currentDate, setCurrentDate] = useState(new Date())
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
+    const [syncStatus, setSyncStatus] = useState<{
+        loading: boolean;
+        synced: boolean;
+        count: number;
+        hasToken: boolean;
+        error?: string;
+    }>({ loading: true, synced: false, count: 0, hasToken: true })
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
     const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set()) // keep this for whatever uses it? actually it seems unused in provided view.
     const [isPending, startTransition] = useTransition()
