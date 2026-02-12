@@ -64,7 +64,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <GroupList groups={groups} />
+      <GroupList groups={groups} currentUserId={user.id} />
     </div>
   )
 }

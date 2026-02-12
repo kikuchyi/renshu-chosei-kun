@@ -509,7 +509,56 @@ export async function leaveGroup(groupId: string) {
         throw new Error('Failed to leave group')
     }
 
+    // Auto-cleanup: if no members remain, delete the group
+    const { count } = await supabase
+        .from('group_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('group_id', groupId)
+
+    if (count === 0) {
+        console.log(`Auto-cleaning group ${groupId} as it has no members remaining.`)
+        await supabase.from('groups').delete().eq('id', groupId)
+    }
+
+    revalidatePath('/')
     redirect('/')
+}
+
+export async function deleteGroup(groupId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('認証されていません')
+    }
+
+    // Verify ownership
+    const { data: group, error: groupError } = await supabase
+        .from('groups')
+        .select('created_by')
+        .eq('id', groupId)
+        .single()
+
+    if (groupError || !group) {
+        throw new Error('グループが見つかりません')
+    }
+
+    if (group.created_by !== user.id) {
+        throw new Error('削除権限がありません')
+    }
+
+    const { error: deleteError } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', groupId)
+
+    if (deleteError) {
+        console.error('Error deleting group:', deleteError)
+        throw new Error('グループの削除に失敗しました')
+    }
+
+    revalidatePath('/')
+    return { success: true }
 }
 
 export async function updatePracticeEvents(
