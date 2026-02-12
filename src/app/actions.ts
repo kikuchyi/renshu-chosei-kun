@@ -5,6 +5,15 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { listEvents } from '@/utils/google-calendar'
 
+function generateInviteCode(length: number = 6): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let result = ''
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return result
+}
+
 export async function updateProfile(formData: FormData) {
     const displayName = formData.get('displayName') as string
     const supabase = await createClient()
@@ -40,10 +49,32 @@ export async function createGroup(formData: FormData) {
         redirect('/login')
     }
 
-    // 1. Create Group
+    // 1. Create Group with unique 6-digit code
+    let inviteCode = ''
+    let isUnique = false
+    let attempts = 0
+
+    while (!isUnique && attempts < 10) {
+        inviteCode = generateInviteCode(6)
+        const { data: existing } = await supabase
+            .from('groups')
+            .select('id')
+            .eq('invite_code', inviteCode)
+            .maybeSingle()
+
+        if (!existing) {
+            isUnique = true
+        }
+        attempts++
+    }
+
     const { data: group, error: groupError } = await supabase
         .from('groups')
-        .insert({ name, created_by: user.id })
+        .insert({
+            name,
+            created_by: user.id,
+            invite_code: inviteCode
+        })
         .select()
         .single()
 
