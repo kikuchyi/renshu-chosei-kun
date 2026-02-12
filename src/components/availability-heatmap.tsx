@@ -415,18 +415,31 @@ export function AvailabilityHeatmap({
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 bg-gray-300 border border-gray-400 rounded-sm"></div>
-                            <span>他メンバーの予定あり（Google連携）</span>
+                            <span>他メンバーの予定あり</span>
                         </div>
-                        {busySlots.length > 0 && (
-                            <div className="ml-auto flex flex-col items-end gap-1">
-                                <div className="font-medium text-blue-600">
-                                    メンバーの予定: {busySlots.length}件 同期済み
+
+                        <div className="ml-auto flex items-center gap-3">
+                            {syncStatus.loading ? (
+                                <div className="text-[10px] text-gray-400 animate-pulse">同期中...</div>
+                            ) : syncStatus.error ? (
+                                <div className="text-[10px] text-red-500 font-medium">{syncStatus.error}</div>
+                            ) : !syncStatus.hasToken ? (
+                                <div className="text-[10px] text-amber-600 font-medium">Google連携未完了</div>
+                            ) : (
+                                <div className="flex flex-col items-end gap-0.5">
+                                    <div className="text-[10px] font-medium text-blue-600">
+                                        同期済み: {busySlots.length}件
+                                        {busySlots.length > 0 && ` (対象:${new Set(busySlots.map(s => s.user_id)).size}名)`}
+                                    </div>
+                                    <button
+                                        onClick={() => fetchEvents()}
+                                        className="text-[9px] text-gray-400 hover:text-blue-600 underline"
+                                    >
+                                        今すぐ同期
+                                    </button>
                                 </div>
-                                <div className="text-[10px] text-gray-400">
-                                    (対象ユーザー数: {new Set(busySlots.map(s => s.user_id)).size}名)
-                                </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
