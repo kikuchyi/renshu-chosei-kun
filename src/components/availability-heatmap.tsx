@@ -418,8 +418,13 @@ export function AvailabilityHeatmap({
                             <span>他メンバーの予定あり（Google連携）</span>
                         </div>
                         {busySlots.length > 0 && (
-                            <div className="ml-auto font-medium text-blue-600">
-                                メンバーの予定: {busySlots.length}件 同期済み
+                            <div className="ml-auto flex flex-col items-end gap-1">
+                                <div className="font-medium text-blue-600">
+                                    メンバーの予定: {busySlots.length}件 同期済み
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                    (対象ユーザー数: {new Set(busySlots.map(s => s.user_id)).size}名)
+                                </div>
                             </div>
                         )}
                     </div>
