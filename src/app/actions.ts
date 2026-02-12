@@ -352,9 +352,6 @@ export async function fetchCalendarEvents(start: string, end: string) {
             const s = new Date(event.start.dateTime || event.start.date || '')
             const e = new Date(event.end.dateTime || event.end.date || '')
 
-            // 1時間ごとのスロットに展開、またはシンプルに開始と終了を保存
-            // 今回はヒートマップのロジックに合わせて、開始時間のみをキーにするか、
-            // そのまま保存してSQLで当てる。ここではシンプルに保存。
             return {
                 user_id: user.id,
                 start_time: s.toISOString(),
@@ -362,9 +359,9 @@ export async function fetchCalendarEvents(start: string, end: string) {
             }
         })
 
+        let synced = false
         if (busySlots.length > 0) {
             console.log(`Syncing ${busySlots.length} busy slots for user ${user.id}`)
-            // 重複を避けるため、既存の期間のものを消してから入れる
             await supabase.from('user_busy_slots').delete().eq('user_id', user.id)
                 .gte('start_time', start).lte('start_time', end)
 
@@ -373,13 +370,14 @@ export async function fetchCalendarEvents(start: string, end: string) {
                 console.error('Failed to upsert busy slots:', upsertError)
             } else {
                 console.log('Successfully synced busy slots')
+                synced = true
             }
         }
 
-        return events
+        return { events, synced }
     } catch (error) {
         console.error('Failed to fetch calendar events:', error)
-        return []
+        return { events: [], synced: false }
     }
 }
 

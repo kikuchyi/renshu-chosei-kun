@@ -74,14 +74,24 @@ export function AvailabilityHeatmap({
     const handleNextMonth = () => setCurrentDate(prev => addMonths(prev, 1))
     const handleToday = () => setCurrentDate(new Date())
 
-    // Fetch calendar events for current week
+    // Fetch calendar events for current week and sync to DB
     useEffect(() => {
         const fetchEvents = async () => {
             try {
                 const start = weekDays[0].toISOString()
                 const end = addDays(weekDays[6], 2).toISOString()
-                const events = await fetchCalendarEvents(start, end)
-                setCalendarEvents(events)
+                const result = await fetchCalendarEvents(start, end)
+
+                // If it's the old array response, handle it (though we just updated it)
+                if (Array.isArray(result)) {
+                    setCalendarEvents(result)
+                } else {
+                    setCalendarEvents(result.events)
+                    // If new data was synced, refresh the page to get updated busySlots from Props
+                    if (result.synced) {
+                        router.refresh()
+                    }
+                }
             } catch (error) {
                 console.error('Failed to fetch calendar events:', error)
             }
@@ -128,7 +138,7 @@ export function AvailabilityHeatmap({
 
     const getIntensityClass = (score: number, busy: boolean) => {
         // If anyone is busy, show gray
-        if (busy) return "bg-gray-200 border-gray-300 text-gray-500 opacity-60"
+        if (busy) return "bg-gray-300 border-gray-400 text-gray-700 opacity-80"
 
         // If no score, show white
         if (score === 0) return "bg-white border-gray-200"
@@ -404,8 +414,8 @@ export function AvailabilityHeatmap({
                             <span>練習決定</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 bg-gray-200 border border-gray-300 rounded-sm"></div>
-                            <span>メンバーの予定あり（Google連携）</span>
+                            <div className="w-3 h-3 bg-gray-300 border border-gray-400 rounded-sm"></div>
+                            <span>他メンバーの予定あり（Google連携）</span>
                         </div>
                         {busySlots.length > 0 && (
                             <div className="ml-auto font-medium text-blue-600">
@@ -497,7 +507,7 @@ export function AvailabilityHeatmap({
                                                         onMouseEnter={() => handleDragEnter(day, hour)}
                                                         onClick={() => !isDragging && handleCellClick(day, hour)}
                                                         className={cn(
-                                                            "h-10 rounded-md transition-all duration-200 cursor-pointer border relative group select-none",
+                                                            "h-10 rounded-md transition-all duration-200 cursor-pointer border relative group select-none flex items-center justify-center",
                                                             intensityClass,
                                                             (isPractice && !(isDragging && dragMode === 'remove' && selectedDragSlotIds.has(`${day.toISOString()}-${hour}`))) && "bg-green-500 border-green-600 cursor-pointer hover:bg-green-600 z-10",
                                                             (isDragging && dragMode === 'add' && selectedDragSlotIds.has(`${day.toISOString()}-${hour}`)) && "bg-green-500 border-green-600"
