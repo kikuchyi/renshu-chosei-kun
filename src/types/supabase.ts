@@ -48,6 +48,8 @@ export interface Database {
                     invite_code: string
                     created_by: string
                     created_at: string
+                    start_hour: number
+                    end_hour: number
                 }
                 Insert: {
                     id?: string
@@ -55,6 +57,8 @@ export interface Database {
                     invite_code?: string
                     created_by: string
                     created_at?: string
+                    start_hour?: number
+                    end_hour?: number
                 }
                 Update: {
                     id?: string
@@ -62,6 +66,8 @@ export interface Database {
                     invite_code?: string
                     created_by?: string
                     created_at?: string
+                    start_hour?: number
+                    end_hour?: number
                 }
                 Relationships: [
                     {
