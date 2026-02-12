@@ -363,11 +363,17 @@ export async function fetchCalendarEvents(start: string, end: string) {
         })
 
         if (busySlots.length > 0) {
+            console.log(`Syncing ${busySlots.length} busy slots for user ${user.id}`)
             // 重複を避けるため、既存の期間のものを消してから入れる
             await supabase.from('user_busy_slots').delete().eq('user_id', user.id)
                 .gte('start_time', start).lte('start_time', end)
 
-            await supabase.from('user_busy_slots').upsert(busySlots, { onConflict: 'user_id,start_time' })
+            const { error: upsertError } = await supabase.from('user_busy_slots').upsert(busySlots, { onConflict: 'user_id,start_time' })
+            if (upsertError) {
+                console.error('Failed to upsert busy slots:', upsertError)
+            } else {
+                console.log('Successfully synced busy slots')
+            }
         }
 
         return events

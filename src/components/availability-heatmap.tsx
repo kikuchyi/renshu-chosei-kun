@@ -128,13 +128,13 @@ export function AvailabilityHeatmap({
 
     const getIntensityClass = (score: number, busy: boolean) => {
         // If anyone is busy, show gray
-        if (busy) return "bg-gray-300 border-gray-400 text-gray-600"
+        if (busy) return "bg-gray-200 border-gray-300 text-gray-500 opacity-60"
 
         // If no score, show white
         if (score === 0) return "bg-white border-gray-200"
 
         // Yellow gradient based on score (priority sum)
-        if (score >= 5) return "bg-yellow-500 border-yellow-600 text-white"
+        if (score >= 5) return "bg-yellow-500 border-yellow-600 text-white shadow-sm"
         if (score >= 4) return "bg-yellow-400 border-yellow-500 text-yellow-900"
         if (score >= 3) return "bg-yellow-300 border-yellow-400 text-yellow-900"
         if (score >= 2) return "bg-yellow-200 border-yellow-300 text-yellow-900"
@@ -389,6 +389,30 @@ export function AvailabilityHeatmap({
                             </button>
                         </div>
                     </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-white border border-gray-200 rounded-sm"></div>
+                            <span>調整中</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-yellow-300 border border-yellow-400 rounded-sm"></div>
+                            <span>候補（濃いほど高評価）</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-green-500 border border-green-600 rounded-sm"></div>
+                            <span>練習決定</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-gray-200 border border-gray-300 rounded-sm"></div>
+                            <span>メンバーの予定あり（Google連携）</span>
+                        </div>
+                        {busySlots.length > 0 && (
+                            <div className="ml-auto font-medium text-blue-600">
+                                メンバーの予定: {busySlots.length}件 同期済み
+                            </div>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {/* Controls */}
@@ -462,8 +486,7 @@ export function AvailabilityHeatmap({
                                             {weekDays.map((day, dayIndex) => {
                                                 const score = getScore(day, hour)
                                                 const busy = isBusy(day, hour)
-                                                // Pass busy=false here because we handle busy state in the className below
-                                                const intensityClass = getIntensityClass(score, false)
+                                                const intensityClass = getIntensityClass(score, busy)
                                                 const practiceId = getPracticeEventId(day, hour)
                                                 const isPractice = !!practiceId
 
@@ -476,8 +499,7 @@ export function AvailabilityHeatmap({
                                                         className={cn(
                                                             "h-10 rounded-md transition-all duration-200 cursor-pointer border relative group select-none",
                                                             intensityClass,
-                                                            busy && "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60",
-                                                            (isPractice && !(isDragging && dragMode === 'remove' && selectedDragSlotIds.has(`${day.toISOString()}-${hour}`))) && "bg-green-500 border-green-600 cursor-pointer hover:bg-green-600",
+                                                            (isPractice && !(isDragging && dragMode === 'remove' && selectedDragSlotIds.has(`${day.toISOString()}-${hour}`))) && "bg-green-500 border-green-600 cursor-pointer hover:bg-green-600 z-10",
                                                             (isDragging && dragMode === 'add' && selectedDragSlotIds.has(`${day.toISOString()}-${hour}`)) && "bg-green-500 border-green-600"
                                                         )}
                                                         title={
