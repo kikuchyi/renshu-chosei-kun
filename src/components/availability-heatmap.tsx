@@ -450,6 +450,7 @@ export function AvailabilityHeatmap({
                                         同期済み: {busySlots.length}件
                                         {busySlots.length > 0 && ` (対象:${new Set(busySlots.map(s => s.user_id)).size}名)`}
                                     </div>
+                                    <div className="text-[9px] text-gray-300 mt-0.5">v1.5.2</div>
                                     <button
                                         onClick={() => fetchEvents()}
                                         className="text-[9px] text-gray-400 hover:text-blue-600 underline"
