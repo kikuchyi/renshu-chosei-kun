@@ -282,7 +282,7 @@ export function AvailabilityInput({
                         <CardDescription>
                             予定はないが、好ましくない時間帯には△を入力してください。
                             <span className="block mt-1 text-[10px] text-gray-500">
-                                ※ <span className="inline-block w-2 H-2 bg-black mr-1 align-middle"></span> 誰か1人でもGoogle予定がある時間帯は黒色で表示されます
+                                ※ <span className="inline-block w-2 h-2 bg-gray-800 mr-1 align-middle"></span> 誰か1人でもGoogle予定がある時間帯は濃い灰色で表示されます
                             </span>
                         </CardDescription>
                     </div>
@@ -379,7 +379,7 @@ export function AvailabilityInput({
                                                         : (busy
                                                             ? "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200"
                                                             : (othersBusy
-                                                                ? "bg-black text-white border-black hover:bg-gray-900"
+                                                                ? "bg-gray-800 text-white border-gray-900 hover:bg-gray-900"
                                                                 : "bg-white border-gray-100 hover:bg-gray-50")),
                                                     count > 0 && displayPriority === null && !busy && !othersBusy && "bg-blue-50"
                                                 )}
