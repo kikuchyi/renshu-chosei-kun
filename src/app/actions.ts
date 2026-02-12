@@ -530,25 +530,38 @@ export async function leaveGroup(groupId: string) {
         throw new Error('Not authenticated')
     }
 
-    const { error } = await supabase
-        .from('group_members')
-        .delete()
-        .eq('group_id', groupId)
-        .eq('user_id', user.id)
-
-    if (error) {
-        throw new Error('Failed to leave group')
-    }
-
-    // Auto-cleanup: if no members remain, delete the group
-    const { count } = await supabase
+    // 1. Check member count BEFORE leaving
+    const { count, error: countError } = await supabase
         .from('group_members')
         .select('*', { count: 'exact', head: true })
         .eq('group_id', groupId)
 
-    if (count === 0) {
-        console.log(`Auto-cleaning group ${groupId} as it has no members remaining.`)
-        await supabase.from('groups').delete().eq('id', groupId)
+    if (countError) {
+        throw new Error('Failed to check member count')
+    }
+
+    if (count === 1) {
+        // Only this user is left, delete the group (cascading will delete the member)
+        console.log(`Auto-cleaning group ${groupId} as it was the last member.`)
+        const { error: groupDeleteError } = await supabase
+            .from('groups')
+            .delete()
+            .eq('id', groupId)
+
+        if (groupDeleteError) {
+            throw new Error('Failed to delete empty group')
+        }
+    } else {
+        // Other members exist, just leave the group
+        const { error: leaveError } = await supabase
+            .from('group_members')
+            .delete()
+            .eq('group_id', groupId)
+            .eq('user_id', user.id)
+
+        if (leaveError) {
+            throw new Error('Failed to leave group')
+        }
     }
 
     revalidatePath('/')
