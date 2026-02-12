@@ -24,6 +24,7 @@ interface AvailabilityInputProps {
     groupId: string
     userId: string
     availabilities: Availability[]
+    groupBusySlots: Database['public']['Tables']['user_busy_slots']['Row'][]
 }
 
 // 5:00 to 29:00 (5:00 next day)
@@ -34,6 +35,7 @@ export function AvailabilityInput({
     groupId,
     userId,
     availabilities,
+    groupBusySlots,
 }: AvailabilityInputProps) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [isPending, startTransition] = useTransition()
@@ -105,6 +107,26 @@ export function AvailabilityInput({
             if (eventEnd.getTime() <= slotStart.getTime()) return false
             if (eventStart.getTime() >= slotEnd.getTime()) return false
 
+            return true
+        })
+    }
+
+    const isOthersBusy = (date: Date, hour: number) => {
+        const slotStart = new Date(date)
+        slotStart.setHours(hour, 0, 0, 0)
+        const slotEnd = new Date(date)
+        slotEnd.setHours(hour + 1, 0, 0, 0)
+
+        // Filter out my own slots from DB-backed busy slots
+        const otherMembersSlots = groupBusySlots.filter(slot => slot.user_id !== userId)
+
+        return otherMembersSlots.some(slot => {
+            const start = new Date(slot.start_time)
+            const end = new Date(slot.end_time)
+
+            // Overlap check
+            if (end.getTime() <= slotStart.getTime()) return false
+            if (start.getTime() >= slotEnd.getTime()) return false
             return true
         })
     }
@@ -259,6 +281,9 @@ export function AvailabilityInput({
                         </CardTitle>
                         <CardDescription>
                             予定はないが、好ましくない時間帯には△を入力してください。
+                            <span className="block mt-1 text-[10px] text-gray-500">
+                                ※ <span className="inline-block w-2 H-2 bg-black mr-1 align-middle"></span> 誰か1人でもGoogle予定がある時間帯は黒色で表示されます
+                            </span>
                         </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -329,6 +354,7 @@ export function AvailabilityInput({
                                         const priority = getPriority(day, hour)
                                         const count = getAvailabilityCount(day, hour)
                                         const busy = isBusy(day, hour)
+                                        const othersBusy = isOthersBusy(day, hour)
 
                                         const slotId = `${day.toISOString()}-${hour}`
                                         const isSelected = selectedSlotIds.has(slotId)
@@ -352,13 +378,18 @@ export function AvailabilityInput({
                                                         ? "bg-yellow-200 text-yellow-900 border-yellow-300 hover:bg-yellow-300"
                                                         : (busy
                                                             ? "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200"
-                                                            : "bg-white border-gray-100 hover:bg-gray-50"),
-                                                    count > 0 && displayPriority === null && !busy && "bg-blue-50"
+                                                            : (othersBusy
+                                                                ? "bg-black text-white border-black hover:bg-gray-900"
+                                                                : "bg-white border-gray-100 hover:bg-gray-50")),
+                                                    count > 0 && displayPriority === null && !busy && !othersBusy && "bg-blue-50"
                                                 )}
                                             >
                                                 {displayPriority === 1 && "△"}
                                                 {busy && displayPriority === null && "予定"}
-                                                {displayPriority === null && !busy && count > 0 && (
+                                                {displayPriority === null && !busy && othersBusy && (
+                                                    <span className="text-[10px] opacity-70">他予定</span>
+                                                )}
+                                                {displayPriority === null && !busy && !othersBusy && count > 0 && (
                                                     <span className="text-blue-300 font-bold opacity-50">{count}</span>
                                                 )}
                                             </button>

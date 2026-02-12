@@ -94,6 +94,7 @@ export default async function GroupPage(props: PageProps) {
                             groupId={group.id}
                             userId={user.id}
                             availabilities={availabilities || []}
+                            groupBusySlots={busySlots || []}
                         />
                     </section>
 
