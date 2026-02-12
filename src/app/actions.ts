@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import { listEvents } from '@/utils/google-calendar'
 
 export async function updateProfile(formData: FormData) {
     const displayName = formData.get('displayName') as string
@@ -330,7 +331,7 @@ export async function updateAvailabilities(
     return { success: true }
 }
 
-import { listEvents } from '@/utils/google-calendar'
+
 
 export async function fetchCalendarEvents(start: string, end: string) {
     const supabase = await createClient()
