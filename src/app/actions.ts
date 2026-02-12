@@ -336,13 +336,15 @@ export async function fetchCalendarEvents(start: string, end: string) {
     const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
-    if (!session || !session.provider_token) {
-        console.warn('No provider token found in session')
-        return []
+    if (!session) {
+        return { events: [], synced: false, syncedCount: 0, hasToken: false, error: 'セッションが見つかりません' }
+    }
+    if (!session.provider_token) {
+        return { events: [], synced: false, syncedCount: 0, hasToken: false, error: 'Google連携が無効です。再度ログインしてください。' }
     }
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return []
+    if (!user) return { events: [], synced: false, syncedCount: 0, hasToken: false, error: 'ユーザーが見つかりません' }
 
     try {
         const events = await listEvents(session.provider_token, start, end)
@@ -357,9 +359,10 @@ export async function fetchCalendarEvents(start: string, end: string) {
                 start_time: s.toISOString(),
                 end_time: e.toISOString()
             }
-        })
+        }).filter(slot => slot.start_time && slot.end_time)
 
         let synced = false
+        let syncedCount = 0
         if (busySlots.length > 0) {
             console.log(`Syncing ${busySlots.length} busy slots for user ${user.id}`)
             await supabase.from('user_busy_slots').delete().eq('user_id', user.id)
@@ -368,16 +371,18 @@ export async function fetchCalendarEvents(start: string, end: string) {
             const { error: upsertError } = await supabase.from('user_busy_slots').upsert(busySlots, { onConflict: 'user_id,start_time' })
             if (upsertError) {
                 console.error('Failed to upsert busy slots:', upsertError)
+                return { events, synced: false, syncedCount: 0, hasToken: true, error: `保存失敗: ${upsertError.message}` }
             } else {
                 console.log('Successfully synced busy slots')
                 synced = true
+                syncedCount = busySlots.length
             }
         }
 
-        return { events, synced }
-    } catch (error) {
+        return { events, synced, syncedCount, hasToken: true }
+    } catch (error: any) {
         console.error('Failed to fetch calendar events:', error)
-        return { events: [], synced: false }
+        return { events: [], synced: false, syncedCount: 0, hasToken: true, error: `通信エラー: ${error.message || 'Unknown'}` }
     }
 }
 

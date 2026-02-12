@@ -44,6 +44,7 @@ export function AvailabilityHeatmap({
     busySlots,
 }: AvailabilityHeatmapProps) {
     const router = useRouter()
+    console.log('AvailabilityHeatmap Rendered - v1.5.2 - busySlots count:', busySlots.length)
     const [currentDate, setCurrentDate] = useState(new Date())
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
     const [syncStatus, setSyncStatus] = useState<{
