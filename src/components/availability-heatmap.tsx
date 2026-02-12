@@ -23,12 +23,14 @@ type Availability = Database['public']['Tables']['availabilities']['Row'] & {
 }
 
 type PracticeEvent = Database['public']['Tables']['practice_events']['Row']
+type BusySlot = Database['public']['Tables']['user_busy_slots']['Row']
 
 interface AvailabilityHeatmapProps {
     availabilities: Availability[]
     totalMembers: number // To calculate intensity
     groupId: string
     practiceEvents: PracticeEvent[]
+    busySlots: BusySlot[]
 }
 
 const START_HOUR = 5
@@ -39,6 +41,7 @@ export function AvailabilityHeatmap({
     totalMembers,
     groupId,
     practiceEvents,
+    busySlots,
 }: AvailabilityHeatmapProps) {
     const router = useRouter()
     const [currentDate, setCurrentDate] = useState(new Date())
@@ -102,6 +105,16 @@ export function AvailabilityHeatmap({
         const slotEnd = new Date(date)
         slotEnd.setHours(hour + 1, 0, 0, 0)
 
+        // Check internal busy slots (all members)
+        const hasBusySlot = busySlots.some(slot => {
+            const start = new Date(slot.start_time)
+            const end = new Date(slot.end_time)
+            return start < slotEnd && end > slotStart
+        })
+
+        if (hasBusySlot) return true
+
+        // Check current user's Google Calendar events (already fetched for week)
         return calendarEvents.some(event => {
             const eventStart = new Date(event.start.dateTime || event.start.date || '')
             const eventEnd = new Date(event.end.dateTime || event.end.date || '')

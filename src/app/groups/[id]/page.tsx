@@ -60,6 +60,13 @@ export default async function GroupPage(props: PageProps) {
         .eq('group_id', id)
         .order('start_time', { ascending: true })
 
+    // 5. Fetch busy slots for all group members
+    const memberIds = members?.map((m: any) => m.user_id) || []
+    const { data: busySlots } = await supabase
+        .from('user_busy_slots')
+        .select('*')
+        .in('user_id', memberIds)
+
     return (
         <div className="container mx-auto py-10 px-4">
             <div className="mb-6">
@@ -97,6 +104,7 @@ export default async function GroupPage(props: PageProps) {
                                 totalMembers={members?.length || 0}
                                 groupId={group.id}
                                 practiceEvents={practiceEvents || []}
+                                busySlots={busySlots || []}
                             />
                         </section>
                     </div>

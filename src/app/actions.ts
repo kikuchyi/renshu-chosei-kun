@@ -337,16 +337,39 @@ export async function fetchCalendarEvents(start: string, end: string) {
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session || !session.provider_token) {
-        // If provider_token is missing, it might be expired or not stored in session.
-        // Supabase Auth stores provider_token in the session if configured.
-        // However, it might not be available if the user logged in with email/password previously.
-        // Or if the token is not persisted in the session object (depends on Supabase config).
         console.warn('No provider token found in session')
         return []
     }
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
     try {
         const events = await listEvents(session.provider_token, start, end)
+
+        // 背景で忙しい時間帯を同期する
+        const busySlots = events.map(event => {
+            const s = new Date(event.start.dateTime || event.start.date || '')
+            const e = new Date(event.end.dateTime || event.end.date || '')
+
+            // 1時間ごとのスロットに展開、またはシンプルに開始と終了を保存
+            // 今回はヒートマップのロジックに合わせて、開始時間のみをキーにするか、
+            // そのまま保存してSQLで当てる。ここではシンプルに保存。
+            return {
+                user_id: user.id,
+                start_time: s.toISOString(),
+                end_time: e.toISOString()
+            }
+        })
+
+        if (busySlots.length > 0) {
+            // 重複を避けるため、既存の期間のものを消してから入れる
+            await supabase.from('user_busy_slots').delete().eq('user_id', user.id)
+                .gte('start_time', start).lte('start_time', end)
+
+            await supabase.from('user_busy_slots').upsert(busySlots, { onConflict: 'user_id,start_time' })
+        }
+
         return events
     } catch (error) {
         console.error('Failed to fetch calendar events:', error)
