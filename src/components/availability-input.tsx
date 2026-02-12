@@ -48,10 +48,14 @@ export function AvailabilityInput({
     const [dragMode, setDragMode] = useState<'add' | 'remove' | null>(null)
     const [selectedSlotIds, setSelectedSlotIds] = useState<Set<string>>(new Set())
 
-    // Get start of the current week view
     const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 }) // Monday start
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i))
-    const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
+    const timeSlots = Array.from({ length: (END_HOUR - START_HOUR) * 2 }, (_, i) => {
+        const totalMinutes = i * 30
+        const hour = START_HOUR + Math.floor(totalMinutes / 60)
+        const minute = totalMinutes % 60
+        return { hour, minute }
+    })
 
     const handlePrevWeek = () => setCurrentDate(prev => subWeeks(prev, 1))
     const handleNextWeek = () => setCurrentDate(prev => addWeeks(prev, 1))
@@ -82,9 +86,9 @@ export function AvailabilityInput({
         fetchEvents()
     }, [currentDate])
 
-    const getPriority = (date: Date, hour: number): number | null => {
+    const getPriority = (date: Date, hour: number, minute: number): number | null => {
         const start = new Date(date)
-        start.setHours(hour, 0, 0, 0)
+        start.setHours(hour, minute, 0, 0)
 
         const availability = availabilities.find(a =>
             a.user_id === userId &&
@@ -93,11 +97,15 @@ export function AvailabilityInput({
         return availability?.priority ?? null
     }
 
-    const isBusy = (date: Date, hour: number) => {
+    const isBusy = (date: Date, hour: number, minute: number) => {
         const slotStart = new Date(date)
-        slotStart.setHours(hour, 0, 0, 0)
+        slotStart.setHours(hour, minute, 0, 0)
         const slotEnd = new Date(date)
-        slotEnd.setHours(hour + 1, 0, 0, 0)
+        if (minute === 0) {
+            slotEnd.setHours(hour, 30, 0, 0)
+        } else {
+            slotEnd.setHours(hour + 1, 0, 0, 0)
+        }
 
         return calendarEvents.some(event => {
             const eventStart = new Date(event.start.dateTime || event.start.date || '')
@@ -111,11 +119,15 @@ export function AvailabilityInput({
         })
     }
 
-    const isOthersBusy = (date: Date, hour: number) => {
+    const isOthersBusy = (date: Date, hour: number, minute: number) => {
         const slotStart = new Date(date)
-        slotStart.setHours(hour, 0, 0, 0)
+        slotStart.setHours(hour, minute, 0, 0)
         const slotEnd = new Date(date)
-        slotEnd.setHours(hour + 1, 0, 0, 0)
+        if (minute === 0) {
+            slotEnd.setHours(hour, 30, 0, 0)
+        } else {
+            slotEnd.setHours(hour + 1, 0, 0, 0)
+        }
 
         // Filter out my own slots from DB-backed busy slots
         const otherMembersSlots = groupBusySlots.filter(slot => slot.user_id !== userId)
@@ -131,9 +143,9 @@ export function AvailabilityInput({
         })
     }
 
-    const getAvailabilityCount = (date: Date, hour: number) => {
+    const getAvailabilityCount = (date: Date, hour: number, minute: number) => {
         const start = new Date(date)
-        start.setHours(hour, 0, 0, 0)
+        start.setHours(hour, minute, 0, 0)
 
         const count = availabilities.filter(a =>
             new Date(a.start_time).getTime() === start.getTime()
@@ -141,24 +153,28 @@ export function AvailabilityInput({
         return count
     }
 
-    const handleToggle = (date: Date, hour: number) => {
-        const currentPriority = getPriority(date, hour)
+    const handleToggle = (date: Date, hour: number, minute: number) => {
+        const currentPriority = getPriority(date, hour, minute)
 
         // Prevent setting priority if busy, but allow removing existing priority
-        if (isBusy(date, hour) && currentPriority === null) {
+        if (isBusy(date, hour, minute) && currentPriority === null) {
             toast.error('予定があるため入力できません')
             return
         }
 
         startTransition(async () => {
             const start = new Date(date)
-            start.setHours(hour, 0, 0, 0)
+            start.setHours(hour, minute, 0, 0)
             const end = new Date(date)
-            end.setHours(hour + 1, 0, 0, 0)
+            if (minute === 0) {
+                end.setHours(hour, 30, 0, 0)
+            } else {
+                end.setHours(hour + 1, 0, 0, 0)
+            }
 
             const startIso = start.toISOString()
             const endIso = end.toISOString()
-            const currentPriority = getPriority(date, hour)
+            const currentPriority = getPriority(date, hour, minute)
 
             // Toggle: null -> 1 -> null
             const newPriority = currentPriority === null ? 1 : null
@@ -171,22 +187,22 @@ export function AvailabilityInput({
         })
     }
 
-    const handleDragStart = (date: Date, hour: number) => {
-        if (isBusy(date, hour)) return
+    const handleDragStart = (date: Date, hour: number, minute: number) => {
+        if (isBusy(date, hour, minute)) return
 
         setIsDragging(true)
-        const currentPriority = getPriority(date, hour)
+        const currentPriority = getPriority(date, hour, minute)
         const mode = currentPriority === null ? 'add' : 'remove'
         setDragMode(mode)
 
-        const slotId = `${date.toISOString()}-${hour}`
+        const slotId = `${date.toISOString()}-${hour}-${minute}`
         setSelectedSlotIds(new Set([slotId]))
     }
 
-    const handleDragEnter = (date: Date, hour: number) => {
-        if (!isDragging || isBusy(date, hour)) return
+    const handleDragEnter = (date: Date, hour: number, minute: number) => {
+        if (!isDragging || isBusy(date, hour, minute)) return
 
-        const slotId = `${date.toISOString()}-${hour}`
+        const slotId = `${date.toISOString()}-${hour}-${minute}`
         setSelectedSlotIds(prev => {
             const newSet = new Set(prev)
             newSet.add(slotId)
@@ -203,24 +219,21 @@ export function AvailabilityInput({
         }
 
         const slots = Array.from(selectedSlotIds).map(id => {
-            // id format: ISOString-hour (Note: ISOString contains hyphens and colons)
-            // But wait, `day.toString()` in existing code uses default toString which is messy.
-            // Let's check how we generate keys.
-            // existing keys use `${day}-${hour}` where day is Date object. This is "[object Date]-hour".
-            // My handleDragStart used `date.toISOString()`.
-            // We need to parse back or store structured data.
-            // Storing structured object in Set doesn't work well for uniqueness.
-            // Let's parse string id.
-            const lastDashIndex = id.lastIndexOf('-')
-            const dateStr = id.substring(0, lastDashIndex)
-            const hourStr = id.substring(lastDashIndex + 1)
+            // id format: ISOString-hour-minute
+            const parts = id.split('-')
+            const minute = parseInt(parts.pop() || '0')
+            const hour = parseInt(parts.pop() || '0')
+            const dateStr = parts.join('-')
             const date = new Date(dateStr)
-            const hour = parseInt(hourStr)
 
             const start = new Date(date)
-            start.setHours(hour, 0, 0, 0)
+            start.setHours(hour, minute, 0, 0)
             const end = new Date(date)
-            end.setHours(hour + 1, 0, 0, 0)
+            if (minute === 0) {
+                end.setHours(hour, 30, 0, 0)
+            } else {
+                end.setHours(hour + 1, 0, 0, 0)
+            }
 
             return {
                 start: start.toISOString(),
@@ -344,19 +357,19 @@ export function AvailabilityInput({
                             ))}
                         </div>
 
-                        <div className="space-y-1">
-                            {hours.map(hour => (
-                                <div key={hour} className="grid grid-cols-8 gap-1 h-10">
-                                    <div className="text-xs text-gray-400 text-center flex items-center justify-center">
-                                        {hour}:00
+                        <div className="space-y-px">
+                            {timeSlots.map(({ hour, minute }) => (
+                                <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1 h-7">
+                                    <div className="text-[10px] text-gray-400 text-center flex items-center justify-center font-mono">
+                                        {minute === 0 ? `${hour}:00` : `${hour}:30`}
                                     </div>
                                     {weekDays.map(day => {
-                                        const priority = getPriority(day, hour)
-                                        const count = getAvailabilityCount(day, hour)
-                                        const busy = isBusy(day, hour)
-                                        const othersBusy = isOthersBusy(day, hour)
+                                        const priority = getPriority(day, hour, minute)
+                                        const count = getAvailabilityCount(day, hour, minute)
+                                        const busy = isBusy(day, hour, minute)
+                                        const othersBusy = isOthersBusy(day, hour, minute)
 
-                                        const slotId = `${day.toISOString()}-${hour}`
+                                        const slotId = `${day.toISOString()}-${hour}-${minute}`
                                         const isSelected = selectedSlotIds.has(slotId)
 
                                         let displayPriority = priority
@@ -366,32 +379,22 @@ export function AvailabilityInput({
 
                                         return (
                                             <button
-                                                key={`${day}-${hour}`}
-                                                onMouseDown={() => handleDragStart(day, hour)}
-                                                onMouseEnter={() => handleDragEnter(day, hour)}
-                                                onClick={() => !isDragging && handleToggle(day, hour)}
+                                                key={`${day}-${hour}-${minute}`}
+                                                onMouseDown={() => handleDragStart(day, hour, minute)}
+                                                onMouseEnter={() => handleDragEnter(day, hour, minute)}
+                                                onClick={() => !isDragging && handleToggle(day, hour, minute)}
                                                 disabled={isPending}
                                                 className={cn(
-                                                    "rounded-md border text-xs flex items-center justify-center transition-colors relative select-none",
-                                                    (busy && displayPriority === null) && "cursor-not-allowed",
-                                                    displayPriority === 1
-                                                        ? "bg-yellow-200 text-yellow-900 border-yellow-300 hover:bg-yellow-300"
-                                                        : (busy
-                                                            ? "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200"
-                                                            : (othersBusy
-                                                                ? "bg-gray-800 text-white border-gray-900 hover:bg-gray-900"
-                                                                : "bg-white border-gray-100 hover:bg-gray-50")),
-                                                    count > 0 && displayPriority === null && !busy && !othersBusy && "bg-blue-50"
+                                                    "rounded-sm border-[0.5px] text-[10px] flex items-center justify-center transition-colors relative select-none",
+                                                    (busy && displayPriority === null) ? "cursor-not-allowed bg-gray-800 border-gray-900" :
+                                                        displayPriority === 1 ? "bg-yellow-100 border-yellow-300 text-yellow-800" :
+                                                            othersBusy ? "bg-gray-800 border-gray-900" : "bg-white border-gray-200 hover:bg-gray-50",
+                                                    isSelected && "ring-1 ring-blue-500 z-10"
                                                 )}
                                             >
-                                                {displayPriority === 1 && "△"}
-                                                {busy && displayPriority === null && "予定"}
-                                                {displayPriority === null && !busy && othersBusy && (
-                                                    <span className="text-[10px] opacity-70">他予定</span>
-                                                )}
-                                                {displayPriority === null && !busy && !othersBusy && count > 0 && (
+                                                {displayPriority === 1 ? '△' : (displayPriority === null && !busy && !othersBusy && count > 0 ? (
                                                     <span className="text-blue-300 font-bold opacity-50">{count}</span>
-                                                )}
+                                                ) : '')}
                                             </button>
                                         )
                                     })}

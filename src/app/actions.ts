@@ -265,21 +265,27 @@ export async function bulkToggleAvailability(
             throw new Error('空き状況の削除に失敗しました')
         }
     } else {
-        // Add availabilities for all hours in the day
+        // Add availabilities for all 30-minute slots in the day
         const availabilities = []
         for (let hour = START_HOUR; hour < END_HOUR; hour++) {
-            const start = new Date(targetDate)
-            start.setHours(hour, 0, 0, 0)
-            const end = new Date(targetDate)
-            end.setHours(hour + 1, 0, 0, 0)
+            for (let minute of [0, 30]) {
+                const start = new Date(targetDate)
+                start.setHours(hour, minute, 0, 0)
+                const end = new Date(targetDate)
+                if (minute === 0) {
+                    end.setHours(hour, 30, 0, 0)
+                } else {
+                    end.setHours(hour + 1, 0, 0, 0)
+                }
 
-            availabilities.push({
-                group_id: groupId,
-                user_id: user.id,
-                start_time: start.toISOString(),
-                end_time: end.toISOString(),
-                priority,
-            })
+                availabilities.push({
+                    group_id: groupId,
+                    user_id: user.id,
+                    start_time: start.toISOString(),
+                    end_time: end.toISOString(),
+                    priority,
+                })
+            }
         }
 
         // First delete existing ones to avoid conflicts

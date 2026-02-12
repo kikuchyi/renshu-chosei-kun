@@ -65,7 +65,12 @@ export function AvailabilityHeatmap({
 
     const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 })
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i))
-    const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
+    const timeSlots = Array.from({ length: (END_HOUR - START_HOUR) * 2 }, (_, i) => {
+        const totalMinutes = i * 30
+        const hour = START_HOUR + Math.floor(totalMinutes / 60)
+        const minute = totalMinutes % 60
+        return { hour, minute }
+    })
 
 
     // Monthly view calculations
@@ -118,9 +123,9 @@ export function AvailabilityHeatmap({
         fetchEvents()
     }, [currentDate])
 
-    const getScore = (date: Date, hour: number) => {
+    const getScore = (date: Date, hour: number, minute: number) => {
         const start = new Date(date)
-        start.setHours(hour, 0, 0, 0)
+        start.setHours(hour, minute, 0, 0)
 
         const score = availabilities
             .filter(a => new Date(a.start_time).getTime() === start.getTime())
@@ -128,11 +133,15 @@ export function AvailabilityHeatmap({
         return score
     }
 
-    const isBusy = (date: Date, hour: number) => {
+    const isBusy = (date: Date, hour: number, minute: number) => {
         const slotStart = new Date(date)
-        slotStart.setHours(hour, 0, 0, 0)
+        slotStart.setHours(hour, minute, 0, 0)
         const slotEnd = new Date(date)
-        slotEnd.setHours(hour + 1, 0, 0, 0)
+        if (minute === 0) {
+            slotEnd.setHours(hour, 30, 0, 0)
+        } else {
+            slotEnd.setHours(hour + 1, 0, 0, 0)
+        }
 
         // Check internal busy slots (all members)
         const hasBusySlot = busySlots.some(slot => {
@@ -174,7 +183,8 @@ export function AvailabilityHeatmap({
     const getDayScore = (date: Date) => {
         let totalScore = 0
         for (let hour = START_HOUR; hour < END_HOUR; hour++) {
-            totalScore += getScore(date, hour)
+            totalScore += getScore(date, hour, 0)
+            totalScore += getScore(date, hour, 30)
         }
         return totalScore
     }
@@ -199,28 +209,28 @@ export function AvailabilityHeatmap({
         return map
     }, [practiceEvents])
 
-    const getPracticeEventId = (day: Date, hour: number) => {
+    const getPracticeEventId = (day: Date, hour: number, minute: number) => {
         const start = new Date(day)
-        start.setHours(hour, 0, 0, 0)
+        start.setHours(hour, minute, 0, 0)
         return confirmedSlots.get(start.getTime())
     }
 
-    const handleDragStart = (day: Date, hour: number) => {
+    const handleDragStart = (day: Date, hour: number, minute: number) => {
         if (viewMode !== 'week') return
 
         setIsDragging(true)
-        const practiceId = getPracticeEventId(day, hour)
+        const practiceId = getPracticeEventId(day, hour, minute)
         const mode = practiceId ? 'remove' : 'add'
         setDragMode(mode)
 
-        const slotId = `${day.toISOString()}-${hour}`
+        const slotId = `${day.toISOString()}-${hour}-${minute}`
         setSelectedDragSlotIds(new Set([slotId]))
     }
 
-    const handleDragEnter = (day: Date, hour: number) => {
+    const handleDragEnter = (day: Date, hour: number, minute: number) => {
         if (!isDragging || viewMode !== 'week') return
 
-        const slotId = `${day.toISOString()}-${hour}`
+        const slotId = `${day.toISOString()}-${hour}-${minute}`
         setSelectedDragSlotIds(prev => {
             const newSet = new Set(prev)
             newSet.add(slotId)
@@ -237,16 +247,20 @@ export function AvailabilityHeatmap({
         }
 
         const slots = Array.from(selectedDragSlotIds).map(id => {
-            const lastDashIndex = id.lastIndexOf('-')
-            const dateStr = id.substring(0, lastDashIndex)
-            const hourStr = id.substring(lastDashIndex + 1)
+            const parts = id.split('-')
+            const minute = parseInt(parts.pop() || '0')
+            const hour = parseInt(parts.pop() || '0')
+            const dateStr = parts.join('-')
             const date = new Date(dateStr)
-            const hour = parseInt(hourStr)
 
             const start = new Date(date)
-            start.setHours(hour, 0, 0, 0)
+            start.setHours(hour, minute, 0, 0)
             const end = new Date(date)
-            end.setHours(hour + 1, 0, 0, 0)
+            if (minute === 0) {
+                end.setHours(hour, 30, 0, 0)
+            } else {
+                end.setHours(hour + 1, 0, 0, 0)
+            }
 
             return {
                 start: start.toISOString(),
@@ -330,22 +344,26 @@ export function AvailabilityHeatmap({
 
 
     // Handle cell click for toggling practice event
-    const handleCellClick = (date: Date, hour: number) => {
-        const busy = isBusy(date, hour)
+    const handleCellClick = (date: Date, hour: number, minute: number) => {
+        const busy = isBusy(date, hour, minute)
         if (busy) return
 
         startTransition(async () => {
             try {
-                const eventId = getPracticeEventId(date, hour)
+                const eventId = getPracticeEventId(date, hour, minute)
 
                 if (eventId) {
                     await deletePracticeEvent(eventId, groupId)
                     toast.success('練習予定を取り消しました')
                 } else {
                     const start = new Date(date)
-                    start.setHours(hour, 0, 0, 0)
+                    start.setHours(hour, minute, 0, 0)
                     const end = new Date(start)
-                    end.setHours(hour + 1, 0, 0, 0)
+                    if (minute === 0) {
+                        end.setHours(hour, 30, 0, 0)
+                    } else {
+                        end.setHours(hour + 1, 0, 0, 0)
+                    }
 
                     await createPracticeEvent(
                         groupId,
@@ -525,44 +543,45 @@ export function AvailabilityHeatmap({
                                 </div>
 
                                 {/* Heatmap Grid */}
-                                <div className="space-y-1">
-                                    {hours.map((hour) => (
-                                        <div key={hour} className="grid grid-cols-8 gap-1">
-                                            <div className="p-2 text-right text-xs text-gray-400 font-mono -mt-2.5 pr-4">
-                                                {hour}:00
+                                <div className="space-y-px">
+                                    {timeSlots.map(({ hour, minute }) => (
+                                        <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1">
+                                            <div className="p-1 text-right text-[10px] text-gray-400 font-mono -mt-2 pr-2">
+                                                {minute === 0 ? `${hour}:00` : `${hour}:30`}
                                             </div>
                                             {weekDays.map((day, dayIndex) => {
-                                                const score = getScore(day, hour)
-                                                const busy = isBusy(day, hour)
+                                                const score = getScore(day, hour, minute)
+                                                const busy = isBusy(day, hour, minute)
                                                 const intensityClass = getIntensityClass(score, busy)
-                                                const practiceId = getPracticeEventId(day, hour)
+                                                const practiceId = getPracticeEventId(day, hour, minute)
                                                 const isPractice = !!practiceId
+                                                const slotId = `${day.toISOString()}-${hour}-${minute}`
 
                                                 return (
                                                     <div
                                                         key={dayIndex}
-                                                        onMouseDown={() => handleDragStart(day, hour)}
-                                                        onMouseEnter={() => handleDragEnter(day, hour)}
-                                                        onClick={() => !isDragging && handleCellClick(day, hour)}
+                                                        onMouseDown={() => handleDragStart(day, hour, minute)}
+                                                        onMouseEnter={() => handleDragEnter(day, hour, minute)}
+                                                        onClick={() => !isDragging && handleCellClick(day, hour, minute)}
                                                         className={cn(
-                                                            "h-10 rounded-md transition-all duration-200 cursor-pointer border relative group select-none flex items-center justify-center",
+                                                            "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center",
                                                             intensityClass,
-                                                            (isPractice && !(isDragging && dragMode === 'remove' && selectedDragSlotIds.has(`${day.toISOString()}-${hour}`))) && "bg-green-500 border-green-600 cursor-pointer hover:bg-green-600 z-10",
-                                                            (isDragging && dragMode === 'add' && selectedDragSlotIds.has(`${day.toISOString()}-${hour}`)) && "bg-green-500 border-green-600"
+                                                            (isPractice && !(isDragging && dragMode === 'remove' && selectedDragSlotIds.has(slotId))) && "bg-green-500 border-green-600 cursor-pointer hover:bg-green-600 z-10",
+                                                            (isDragging && dragMode === 'add' && selectedDragSlotIds.has(slotId)) && "bg-green-500 border-green-600"
                                                         )}
                                                         title={
                                                             isPractice ? "決定済みの練習予定 (クリックで解除)" :
                                                                 busy ? "予定あり" :
-                                                                    `${format(day, 'M/d')} ${hour}:00 - スコア: ${score}`
+                                                                    `${format(day, 'M/d')} ${hour}:${minute === 0 ? '00' : '30'} - スコア: ${score}`
                                                         }
                                                     >
                                                         {isPractice && (
-                                                            <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs">
+                                                            <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-[8px]">
                                                                 決定
                                                             </div>
                                                         )}
                                                         {busy && !isPractice && (
-                                                            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-[10px] font-medium">
+                                                            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-[8px] font-medium">
                                                                 予定
                                                             </div>
                                                         )}
