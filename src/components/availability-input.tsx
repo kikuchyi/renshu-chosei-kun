@@ -415,7 +415,7 @@ export function AvailabilityInput({
             if (navigator.vibrate) {
                 navigator.vibrate(50)
             }
-        }, 500) // 500ms long press
+        }, 300) // 300ms long press
     }
 
     const handleTouchMove = (e: React.TouchEvent) => {
@@ -584,6 +584,7 @@ export function AvailabilityInput({
                                                 onTouchStart={(e) => handleTouchStart(e, day, hour, minute)}
                                                 onTouchMove={handleTouchMove}
                                                 onTouchEnd={handleTouchEnd}
+                                                onContextMenu={(e) => e.preventDefault()}
                                                 onClick={() => !isDragging && handleToggle(day, hour, minute)}
                                                 disabled={isPending}
                                                 className={cn(

@@ -495,7 +495,7 @@ export function AvailabilityHeatmap({
             if (navigator.vibrate) {
                 navigator.vibrate(50);
             }
-        }, 500)
+        }, 300)
     }
 
     const handleTouchMove = (e: React.TouchEvent) => {
@@ -722,6 +722,7 @@ export function AvailabilityHeatmap({
                                                         onTouchStart={(e) => handleTouchStart(e, day, hour, minute)}
                                                         onTouchMove={handleTouchMove}
                                                         onTouchEnd={handleTouchEnd}
+                                                        onContextMenu={(e) => e.preventDefault()}
                                                         onClick={() => !isDragging && handleCellClick(day, hour, minute)}
                                                         className={cn(
                                                             "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center touch-manipulation",
