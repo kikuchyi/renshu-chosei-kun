@@ -98,6 +98,8 @@ export function AvailabilityInput({
     // Long press refs
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
     const startPosRef = useRef<{ x: number, y: number } | null>(null)
+    // Grid container ref for native touch event handling
+    const gridRef = useRef<HTMLDivElement>(null)
 
     const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 }) // Monday start
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i))
@@ -341,6 +343,21 @@ export function AvailabilityInput({
         return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
     }, [isDragging, dragMode, selectedSlotIds]) // Deps needed for closure capture
 
+    // Native non-passive touchmove listener to prevent scrolling during drag
+    const isDraggingRef = useRef(isDragging)
+    isDraggingRef.current = isDragging
+    useEffect(() => {
+        const el = gridRef.current
+        if (!el) return
+        const handler = (e: TouchEvent) => {
+            if (isDraggingRef.current) {
+                e.preventDefault()
+            }
+        }
+        el.addEventListener('touchmove', handler, { passive: false })
+        return () => el.removeEventListener('touchmove', handler)
+    }, [])
+
     const handleBulkToggle = (date: Date, priority: number | null) => {
         startTransition(async () => {
             const dateStr = format(date, 'yyyy-MM-dd')
@@ -440,10 +457,8 @@ export function AvailabilityInput({
             return
         }
 
-        // Processing drag selection
-        if (e.cancelable) {
-            e.preventDefault()
-        }
+        // Note: scrolling is prevented by native non-passive touchmove listener on gridRef
+        // No need for e.preventDefault() here (React synthetic events are passive)
 
         const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement
 
@@ -521,7 +536,7 @@ export function AvailabilityInput({
             </CardHeader>
             <CardContent>
                 <div className="w-full overflow-x-auto pb-4">
-                    <div className="min-w-[700px]">
+                    <div ref={gridRef} className="min-w-[700px]" style={isDragging ? { touchAction: 'none' } : undefined}>
                         <div className="grid grid-cols-8 gap-1 mb-2">
                             <div className="text-xs text-gray-500 text-center pt-2">時間</div>
                             {weekDays.map(day => (

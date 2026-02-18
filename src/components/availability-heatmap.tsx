@@ -109,6 +109,8 @@ export function AvailabilityHeatmap({
     // Long press refs
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
     const startPosRef = useRef<{ x: number, y: number } | null>(null)
+    // Grid container ref for native touch event handling
+    const gridRef = useRef<HTMLDivElement>(null)
 
     const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 })
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i))
@@ -362,6 +364,20 @@ export function AvailabilityHeatmap({
         return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
     }, [isDragging, dragMode, selectedDragSlotIds])
 
+    // Native non-passive touchmove listener to prevent scrolling during drag
+    const isDraggingRef = useRef(isDragging)
+    isDraggingRef.current = isDragging
+    useEffect(() => {
+        const el = gridRef.current
+        if (!el) return
+        const handler = (e: TouchEvent) => {
+            if (isDraggingRef.current) {
+                e.preventDefault()
+            }
+        }
+        el.addEventListener('touchmove', handler, { passive: false })
+        return () => el.removeEventListener('touchmove', handler)
+    }, [])
 
     // Get practice events for a specific day
     const getPracticeEventsForDay = (date: Date) => {
@@ -521,9 +537,8 @@ export function AvailabilityHeatmap({
             return
         }
 
-        if (e.cancelable) {
-            e.preventDefault()
-        }
+        // Note: scrolling is prevented by native non-passive touchmove listener on gridRef
+        // No need for e.preventDefault() here (React synthetic events are passive)
 
         const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement
         if (!target) return
@@ -663,7 +678,7 @@ export function AvailabilityHeatmap({
                 <CardContent>
                     {viewMode === 'week' ? (
                         <div className="w-full overflow-x-auto pb-4">
-                            <div className="min-w-[600px]">
+                            <div ref={gridRef} className="min-w-[600px]" style={isDragging ? { touchAction: 'none' } : undefined}>
                                 {/* Header Row */}
                                 <div className="grid grid-cols-8 gap-1 mb-2">
                                     <div className="p-2 text-center text-gray-500 text-xs font-medium pt-8">
