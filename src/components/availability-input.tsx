@@ -54,41 +54,31 @@ export function AvailabilityInput({
         availabilities,
         (state, action) => {
             switch (action.type) {
-                case 'add':
-                case 'remove': {
+                case 'add': {
                     const newSlots = action.slots || [];
-                    const updateStartTimes = new Set(newSlots.map(s => s.start));
-                    const filtered = state.filter(a => !updateStartTimes.has(a.start_time));
+                    const updateStartTimes = new Set(newSlots.map(s => new Date(s.start).getTime()));
+                    // Filter out existing items that overlap with new additions (to avoid duplicates if any)
+                    const filtered = state.filter(a => !updateStartTimes.has(new Date(a.start_time).getTime()));
 
-                    if (action.type === 'add') {
-                        const newAvailabilities = newSlots.map(slot => ({
-                            id: 'optimistic-' + Math.random(),
-                            user_id: userId,
-                            group_id: groupId,
-                            start_time: slot.start,
-                            end_time: slot.end,
-                            priority: slot.priority || 1,
-                            created_at: new Date().toISOString()
-                        } as Availability));
-                        return [...filtered, ...newAvailabilities];
-                    }
-                    return filtered;
+                    const newAvailabilities = newSlots.map(slot => ({
+                        id: 'optimistic-' + Math.random(),
+                        user_id: userId,
+                        group_id: groupId,
+                        start_time: slot.start,
+                        end_time: slot.end,
+                        priority: slot.priority || 1,
+                        created_at: new Date().toISOString()
+                    } as Availability));
+                    return [...filtered, ...newAvailabilities];
+                }
+                case 'remove': {
+                    const slotsToRemove = action.slots || [];
+                    const removeStartTimes = new Set(slotsToRemove.map(s => new Date(s.start).getTime()));
+                    return state.filter(a => !removeStartTimes.has(new Date(a.start_time).getTime()));
                 }
                 case 'bulk_remove': {
-                    const targetDate = action.dateStr!;
-                    // start_time is ISO string, so it includes date. 
-                    // We need to match YYYY-MM-DD.
-                    // Assuming local time for dateStr is passed correctly or comparing ISO dates?
-                    // availabilities start_time is ISO (UTC usually).
-                    // dateStr passed from handleBulkToggle is formatted 'yyyy-MM-dd'.
-                    // We need to be careful with timezones.
-                    // However, bulkToggle usually operates on the "date" as viewed by the user.
-                    // Let's match roughly or better, rely on the fact that existing logic handles it.
-                    // Actually, simpler: in handleBulkToggle we know the exact range for that day?
-                    // We can just calculate the range and filter out.
-                    // For simplicity in reducer, let's use the range filtering if possible, or just string match if strictly YYYY-MM-DD matches start_time's YYYY-MM-DD (converted to local?).
-                    // Let's use a simpler approach: handleBulkToggle generates the 'remove' slots for the whole day and calls 'remove' type?
-                    // Yes, let's do that.
+                    // For bulk remove, we might not need this if we handle it via 'remove' type with calculated slots
+                    // But if we use dateStr...
                     return state;
                 }
             }

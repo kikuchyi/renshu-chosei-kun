@@ -87,8 +87,8 @@ export function AvailabilityHeatmap({
                         return state.filter(e => e.id !== action.id);
                     }
                     if (action.slots) {
-                        const slotsToRemove = new Set(action.slots.map(s => s.start));
-                        return state.filter(e => !slotsToRemove.has(e.start_time));
+                        const slotsToRemove = new Set(action.slots.map(s => new Date(s.start).getTime()));
+                        return state.filter(e => !slotsToRemove.has(new Date(e.start_time).getTime()));
                     }
                     return state;
                 }
