@@ -50,14 +50,14 @@ export function GroupMemberList({ groupId, currentUserId, members }: GroupMember
     return (
         <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-lg shadow mb-6">
             <h2 className="text-lg font-bold mr-4">メンバー:</h2>
-            <div className="flex -space-x-2 overflow-hidden mr-auto">
+            <div className="flex flex-wrap items-center gap-3 mr-auto">
                 {members.map((member) => (
-                    <div key={member.user_id} className="relative group">
-                        <Avatar className="inline-block h-10 w-10 rounded-full ring-2 ring-white cursor-help">
+                    <div key={member.user_id} className="flex items-center gap-2 bg-gray-50 rounded-full pl-1 pr-3 py-1">
+                        <Avatar className="h-7 w-7 rounded-full ring-1 ring-white">
                             <AvatarImage src={member.users?.avatar_url || ''} />
-                            <AvatarFallback>{member.users?.display_name?.[0] || '?'}</AvatarFallback>
+                            <AvatarFallback className="text-xs">{member.users?.display_name?.[0] || '?'}</AvatarFallback>
                         </Avatar>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none mb-1">
+                        <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
                             {member.users?.display_name || '不明なユーザー'}
                         </span>
                     </div>
