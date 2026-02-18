@@ -1,8 +1,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { AvailabilityInput } from '@/components/availability-input'
-import { AvailabilityHeatmap } from '@/components/availability-heatmap'
+import { GroupScheduleManager } from '@/components/group-schedule-manager'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -100,30 +99,20 @@ export default async function GroupPage(props: PageProps) {
                             currentUserId={user.id}
                             members={members || []}
                         />
-                        <AvailabilityInput
-                            groupId={group.id}
-                            userId={user.id}
-                            availabilities={availabilities || []}
-                            groupBusySlots={busySlots || []}
-                            calendarEvents={[]} // Fetch on client side as before
-                            startHour={group.start_hour}
-                            endHour={group.end_hour}
-                        />
-                    </section>
-
-                    <div className="grid gap-6">
-                        <section>
-                            <AvailabilityHeatmap
-                                availabilities={availabilities || []}
+                        <div className="space-y-4">
+                            <GroupScheduleManager
                                 groupId={group.id}
+                                userId={user.id}
+                                availabilities={availabilities || []}
                                 practiceEvents={practiceEvents || []}
                                 busySlots={busySlots || []}
-                                calendarEvents={[]} // Fetch on client side as before
+                                groupBusySlots={busySlots || []} // Note: passing busySlots as groupBusySlots based on page logic
+                                calendarEvents={[]}
                                 startHour={group.start_hour}
                                 endHour={group.end_hour}
                             />
-                        </section>
-                    </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>

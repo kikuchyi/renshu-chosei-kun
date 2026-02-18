@@ -556,268 +556,147 @@ export function AvailabilityHeatmap({
     return (
         <div className="space-y-6">
             <Card className="w-full max-w-5xl mx-auto shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <div className="space-y-1">
-                        <CardTitle className="text-2xl font-bold">
-                            {viewMode === 'week' ? '練習日の決定' : '月間カレンダー'}
-                        </CardTitle>
-                        <CardDescription>
-                            {viewMode === 'week'
-                                ? 'クリックして練習可能な時間帯を決定/解除してください。'
-                                : '決定済みの練習予定が表示されます。'
+                <div className="p-2 text-center text-gray-500 text-xs font-medium pt-8">
+                    時間
+                </div>
+                {weekDays.map((day, i) => (
+                    <div key={i} className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 font-medium mb-1">
+                            {format(day, 'E', { locale: ja })}
+                        </div>
+                        <div className={cn(
+                            "text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center",
+                            isSameDay(day, new Date()) ? "bg-blue-600 text-white shadow-md" : "text-gray-700"
+                        )}>
+                            {format(day, 'd')}
+                        </div>
+                    </div>
+                ))}
+        </div>
+
+                                {/* Heatmap Grid */ }
+    <div className="space-y-px">
+        {timeSlots.map(({ hour, minute }) => (
+            <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1">
+                <div className="p-1 text-right text-[10px] text-gray-400 font-mono -mt-2 pr-2">
+                    {minute === 0 ? `${hour}:00` : `${hour}:30`}
+                </div>
+                {weekDays.map((day, dayIndex) => {
+                    const score = getScore(day, hour, minute)
+                    const busy = isBusy(day, hour, minute)
+                    const intensityClass = getIntensityClass(score, busy)
+                    const practiceId = getPracticeEventId(day, hour, minute)
+                    const isPractice = !!practiceId
+                    const slotId = `${day.toISOString()}-${hour}-${minute}`
+
+                    return (
+                        <div
+                            key={dayIndex}
+                            data-date={day.toISOString()}
+                            data-hour={hour}
+                            data-minute={minute}
+                            onMouseDown={() => handleDragStart(day, hour, minute)}
+                            onMouseEnter={() => handleDragEnter(day, hour, minute)}
+                            onTouchStart={(e) => handleTouchStart(e, day, hour, minute)}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            onClick={() => !isDragging && handleCellClick(day, hour, minute)}
+                            className={cn(
+                                "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center touch-manipulation",
+                                isPractice ? "bg-green-500 border-green-600 hover:bg-green-600 z-10" : intensityClass,
+                                (isDragging && dragMode === 'remove' && isPractice && selectedDragSlotIds.has(slotId)) && "opacity-50",
+                                (isDragging && dragMode === 'add' && !isPractice && selectedDragSlotIds.has(slotId)) && "bg-green-500 border-green-600"
+                            )}
+                            title={
+                                isPractice ? (busy ? "決定済みの練習予定 (競合あり - クリックで解除)" : "決定済みの練習予定 (クリックで解除)") :
+                                    busy ? "予定あり" :
+                                        `${format(day, 'M/d')} ${hour}:${minute === 0 ? '00' : '30'} - スコア: ${score}`
                             }
-                        </CardDescription>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <div className="bg-slate-100 p-1 rounded-lg flex text-sm">
-                            <button
-                                onClick={() => setViewMode('week')}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-md transition-all",
-                                    viewMode === 'week' ? "bg-white shadow text-gray-900 font-medium" : "text-gray-500 hover:text-gray-900"
-                                )}
-                            >
-                                週間
-                            </button>
-                            <button
-                                onClick={() => setViewMode('month')}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-md transition-all",
-                                    viewMode === 'month' ? "bg-white shadow text-gray-900 font-medium" : "text-gray-500 hover:text-gray-900"
-                                )}
-                            >
-                                月間
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border">
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 bg-white border border-gray-200 rounded-sm"></div>
-                            <span>調整中</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 bg-yellow-300 border border-yellow-400 rounded-sm"></div>
-                            <span>候補（濃いほど高評価）</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 bg-green-500 border border-green-600 rounded-sm"></div>
-                            <span>練習決定</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 bg-gray-300 border border-gray-400 rounded-sm"></div>
-                            <span>他メンバーの予定あり</span>
-                        </div>
-
-                        <div className="ml-auto flex items-center gap-3">
-                            {syncStatus.loading ? (
-                                <div className="text-[10px] text-gray-400 animate-pulse">同期中...</div>
-                            ) : syncStatus.error ? (
-                                <div className="text-[10px] text-red-500 font-medium">{syncStatus.error}</div>
-                            ) : !syncStatus.hasToken ? (
-                                <div className="text-[10px] text-amber-600 font-medium">Google連携未完了</div>
-                            ) : (
-                                <div className="flex flex-col items-end gap-0.5">
-                                    <div className="text-[10px] font-medium text-blue-600">
-                                        同期済み: {busySlots.length}件
-                                        {busySlots.length > 0 && ` (対象:${new Set(busySlots.map(s => s.user_id)).size}名)`}
-                                    </div>
-                                    <div className="text-[9px] text-gray-300 mt-0.5">v1.5.2</div>
-                                    <button
-                                        onClick={() => fetchEvents()}
-                                        className="text-[9px] text-gray-400 hover:text-blue-600 underline"
-                                    >
-                                        今すぐ同期
-                                    </button>
+                        >
+                            {isPractice && (
+                                <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-[8px]">
+                                    決定
+                                </div>
+                            )}
+                            {busy && !isPractice && (
+                                <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-[8px] font-medium">
+                                    予定
                                 </div>
                             )}
                         </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {/* Controls */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center space-x-4">
-                            <Button variant="outline" size="icon" onClick={viewMode === 'week' ? handlePrevWeek : handlePrevMonth}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <h3 className="text-lg font-semibold min-w-[200px] text-center">
-                                {viewMode === 'week'
-                                    ? `${format(weekDays[0], 'M月d日', { locale: ja })} - ${format(weekDays[6], 'd日', { locale: ja })}`
-                                    : format(currentDate, 'yyyy年 M月', { locale: ja })
-                                }
-                            </h3>
-                            <Button variant="outline" size="icon" onClick={viewMode === 'week' ? handleNextWeek : handleNextMonth}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                            {viewMode === 'week' && (
-                                <Button variant="outline" onClick={handleToday} className="ml-2">
-                                    今日
-                                </Button>
-                            )}
-                        </div>
-
-                        {viewMode === 'week' && (
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <div className="flex items-center">
-                                        <div className="w-3 h-3 bg-green-500 rounded mr-1"></div>
-                                        <span>決定</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <div className="w-3 h-3 bg-gray-100 rounded mr-1"></div>
-                                        <span>予定</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {viewMode === 'week' ? (
-                        <div className="w-full overflow-x-auto pb-4">
-                            <div className="min-w-[600px]">
-                                {/* Header Row */}
-                                <div className="grid grid-cols-8 gap-1 mb-2">
-                                    <div className="p-2 text-center text-gray-500 text-xs font-medium pt-8">
-                                        時間
-                                    </div>
-                                    {weekDays.map((day, i) => (
-                                        <div key={i} className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-                                            <div className="text-xs text-gray-500 font-medium mb-1">
-                                                {format(day, 'E', { locale: ja })}
-                                            </div>
-                                            <div className={cn(
-                                                "text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center",
-                                                isSameDay(day, new Date()) ? "bg-blue-600 text-white shadow-md" : "text-gray-700"
-                                            )}>
-                                                {format(day, 'd')}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Heatmap Grid */}
-                                <div className="space-y-px">
-                                    {timeSlots.map(({ hour, minute }) => (
-                                        <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1">
-                                            <div className="p-1 text-right text-[10px] text-gray-400 font-mono -mt-2 pr-2">
-                                                {minute === 0 ? `${hour}:00` : `${hour}:30`}
-                                            </div>
-                                            {weekDays.map((day, dayIndex) => {
-                                                const score = getScore(day, hour, minute)
-                                                const busy = isBusy(day, hour, minute)
-                                                const intensityClass = getIntensityClass(score, busy)
-                                                const practiceId = getPracticeEventId(day, hour, minute)
-                                                const isPractice = !!practiceId
-                                                const slotId = `${day.toISOString()}-${hour}-${minute}`
-
-                                                return (
-                                                    <div
-                                                        key={dayIndex}
-                                                        data-date={day.toISOString()}
-                                                        data-hour={hour}
-                                                        data-minute={minute}
-                                                        onMouseDown={() => handleDragStart(day, hour, minute)}
-                                                        onMouseEnter={() => handleDragEnter(day, hour, minute)}
-                                                        onTouchStart={(e) => handleTouchStart(e, day, hour, minute)}
-                                                        onTouchMove={handleTouchMove}
-                                                        onTouchEnd={handleTouchEnd}
-                                                        onContextMenu={(e) => e.preventDefault()}
-                                                        onClick={() => !isDragging && handleCellClick(day, hour, minute)}
-                                                        className={cn(
-                                                            "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center touch-manipulation",
-                                                            isPractice ? "bg-green-500 border-green-600 hover:bg-green-600 z-10" : intensityClass,
-                                                            (isDragging && dragMode === 'remove' && isPractice && selectedDragSlotIds.has(slotId)) && "opacity-50",
-                                                            (isDragging && dragMode === 'add' && !isPractice && selectedDragSlotIds.has(slotId)) && "bg-green-500 border-green-600"
-                                                        )}
-                                                        title={
-                                                            isPractice ? (busy ? "決定済みの練習予定 (競合あり - クリックで解除)" : "決定済みの練習予定 (クリックで解除)") :
-                                                                busy ? "予定あり" :
-                                                                    `${format(day, 'M/d')} ${hour}:${minute === 0 ? '00' : '30'} - スコア: ${score}`
-                                                        }
-                                                    >
-                                                        {isPractice && (
-                                                            <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-[8px]">
-                                                                決定
-                                                            </div>
-                                                        )}
-                                                        {busy && !isPractice && (
-                                                            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-[8px] font-medium">
-                                                                予定
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+                    )
+                })}
+            </div>
+        ))}
+    </div>
+                            </div >
+                        </div >
                     ) : (
-                        /* Monthly View */
-                        <div className="w-full">
-                            <div className="w-full min-w-[350px]">
-                                {/* Calendar Header */}
-                                <div className="grid grid-cols-7 gap-px mb-2">
-                                    {['月', '火', '水', '木', '金', '土', '日'].map((day, i) => (
-                                        <div key={i} className="text-center py-2 text-sm font-bold text-gray-500">
-                                            {day}
-                                        </div>
-                                    ))}
+        /* Monthly View */
+        <div className="w-full">
+            <div className="w-full min-w-[350px]">
+                {/* Calendar Header */}
+                <div className="grid grid-cols-7 gap-px mb-2">
+                    {['月', '火', '水', '木', '金', '土', '日'].map((day, i) => (
+                        <div key={i} className="text-center py-2 text-sm font-bold text-gray-500">
+                            {day}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-2">
+                    {calendarDays.map((day, i) => {
+                        const isCurrentMonth = day.getMonth() === currentDate.getMonth()
+                        const isToday = isSameDay(day, new Date())
+                        const dayScore = getDayScore(day)
+                        const intensityClass = isCurrentMonth ? getDayIntensityClass(dayScore) : "bg-gray-50"
+                        const dayPracticeEvents = getPracticeEventsForDay(day)
+                        const mergedEvents = mergeContinuousEvents(dayPracticeEvents)
+
+                        return (
+                            <div
+                                key={i}
+                                className={cn(
+                                    "min-h-[100px] p-2 rounded-lg border flex flex-col transition-colors",
+                                    intensityClass,
+                                    !isCurrentMonth && "opacity-50",
+                                    isToday && "ring-2 ring-blue-500"
+                                )}
+                                title={`${format(day, 'M月d日', { locale: ja })}: スコア ${dayScore}`}
+                            >
+                                <div className="text-xs font-medium mb-1">
+                                    {format(day, 'd')}
                                 </div>
-
-                                {/* Calendar Grid */}
-                                <div className="grid grid-cols-7 gap-2">
-                                    {calendarDays.map((day, i) => {
-                                        const isCurrentMonth = day.getMonth() === currentDate.getMonth()
-                                        const isToday = isSameDay(day, new Date())
-                                        const dayScore = getDayScore(day)
-                                        const intensityClass = isCurrentMonth ? getDayIntensityClass(dayScore) : "bg-gray-50"
-                                        const dayPracticeEvents = getPracticeEventsForDay(day)
-                                        const mergedEvents = mergeContinuousEvents(dayPracticeEvents)
-
-                                        return (
+                                {mergedEvents.length > 0 && (
+                                    <div className="space-y-1 flex-1">
+                                        {mergedEvents.map((event, i) => (
                                             <div
                                                 key={i}
-                                                className={cn(
-                                                    "min-h-[100px] p-2 rounded-lg border flex flex-col transition-colors",
-                                                    intensityClass,
-                                                    !isCurrentMonth && "opacity-50",
-                                                    isToday && "ring-2 ring-blue-500"
-                                                )}
-                                                title={`${format(day, 'M月d日', { locale: ja })}: スコア ${dayScore}`}
+                                                className="bg-green-500 text-white text-xs px-1 py-0.5 rounded font-medium"
                                             >
-                                                <div className="text-xs font-medium mb-1">
-                                                    {format(day, 'd')}
-                                                </div>
-                                                {mergedEvents.length > 0 && (
-                                                    <div className="space-y-1 flex-1">
-                                                        {mergedEvents.map((event, i) => (
-                                                            <div
-                                                                key={i}
-                                                                className="bg-green-500 text-white text-xs px-1 py-0.5 rounded font-medium"
-                                                            >
-                                                                {format(event.start, 'HH:mm')}-{format(event.end, 'HH:mm')}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {mergedEvents.length === 0 && dayScore > 0 && (
-                                                    <div className="text-center flex-1 flex items-center justify-center">
-                                                        <span className="text-sm font-bold">{dayScore}</span>
-                                                    </div>
-                                                )}
+                                                {format(event.start, 'HH:mm')}-{format(event.end, 'HH:mm')}
                                             </div>
-                                        )
-                                    })}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {mergedEvents.length === 0 && dayScore > 0 && (
+                                    <div className="text-center flex-1 flex items-center justify-center">
+                                        <span className="text-sm font-bold">{dayScore}</span>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-            <ScheduleList practiceEvents={filteredEvents} />
+                        )
+                    })}
+                </div>
+            </div>
         </div>
+    )
+}
+                </CardContent >
+            </Card >
+    <ScheduleList practiceEvents={filteredEvents} />
+        </div >
     )
 }
