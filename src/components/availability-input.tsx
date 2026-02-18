@@ -436,7 +436,7 @@ export function AvailabilityInput({
             if (startPosRef.current) {
                 const dx = Math.abs(touch.clientX - startPosRef.current.x)
                 const dy = Math.abs(touch.clientY - startPosRef.current.y)
-                if (dx > 10 || dy > 10) {
+                if (dx > 5 || dy > 5) {
                     if (longPressTimerRef.current) {
                         clearTimeout(longPressTimerRef.current)
                         longPressTimerRef.current = null
@@ -597,7 +597,7 @@ export function AvailabilityInput({
                                                 onClick={() => !isDragging && handleToggle(day, hour, minute)}
                                                 disabled={isPending}
                                                 className={cn(
-                                                    "rounded-sm border-[0.5px] text-[10px] flex items-center justify-center transition-colors relative select-none",
+                                                    "rounded-sm border-[0.5px] text-[10px] flex items-center justify-center transition-colors relative select-none touch-manipulation",
                                                     (busy && displayPriority === null) ? "cursor-not-allowed bg-gray-800 border-gray-900" :
                                                         displayPriority === 1 ? "bg-yellow-100 border-yellow-300 text-yellow-800" :
                                                             othersBusy ? "bg-gray-800 border-gray-900" : "bg-white border-gray-200 hover:bg-gray-50",

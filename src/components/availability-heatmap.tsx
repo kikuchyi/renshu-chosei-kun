@@ -507,7 +507,7 @@ export function AvailabilityHeatmap({
             if (startPosRef.current) {
                 const dx = Math.abs(touch.clientX - startPosRef.current.x)
                 const dy = Math.abs(touch.clientY - startPosRef.current.y)
-                if (dx > 10 || dy > 10) {
+                if (dx > 5 || dy > 5) {
                     if (longPressTimerRef.current) {
                         clearTimeout(longPressTimerRef.current)
                         longPressTimerRef.current = null
@@ -724,7 +724,7 @@ export function AvailabilityHeatmap({
                                                         onTouchEnd={handleTouchEnd}
                                                         onClick={() => !isDragging && handleCellClick(day, hour, minute)}
                                                         className={cn(
-                                                            "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center",
+                                                            "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center touch-manipulation",
                                                             isPractice ? "bg-green-500 border-green-600 hover:bg-green-600 z-10" : intensityClass,
                                                             (isDragging && dragMode === 'remove' && isPractice && selectedDragSlotIds.has(slotId)) && "opacity-50",
                                                             (isDragging && dragMode === 'add' && !isPractice && selectedDragSlotIds.has(slotId)) && "bg-green-500 border-green-600"
