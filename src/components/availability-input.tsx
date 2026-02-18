@@ -49,7 +49,46 @@ export function AvailabilityInput({
     const [isLoadingCalendar, setIsLoadingCalendar] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
-    // ... optimistic setup ... (omitted for brevity, assume unchanged logic below)
+    // Optimistic UI
+    const [optimisticAvailabilities, addOptimisticAvailability] = useOptimistic<Availability[], {
+        type: 'add' | 'remove' | 'bulk_remove',
+        slots?: { start: string, end: string, priority?: number }[],
+        dateStr?: string
+    }>(
+        availabilities,
+        (state, action) => {
+            switch (action.type) {
+                case 'add': {
+                    const newSlots = action.slots || [];
+                    const updateStartTimes = new Set(newSlots.map(s => new Date(s.start).getTime()));
+                    // Filter out existing items that overlap with new additions (to avoid duplicates if any)
+                    const filtered = state.filter(a => !updateStartTimes.has(new Date(a.start_time).getTime()));
+
+                    const newAvailabilities = newSlots.map(slot => ({
+                        id: 'optimistic-' + Math.random(),
+                        user_id: userId,
+                        group_id: groupId,
+                        start_time: slot.start,
+                        end_time: slot.end,
+                        priority: slot.priority || 1,
+                        created_at: new Date().toISOString()
+                    } as Availability));
+                    return [...filtered, ...newAvailabilities];
+                }
+                case 'remove': {
+                    const slotsToRemove = action.slots || [];
+                    const removeStartTimes = new Set(slotsToRemove.map(s => new Date(s.start).getTime()));
+                    return state.filter(a => !removeStartTimes.has(new Date(a.start_time).getTime()));
+                }
+                case 'bulk_remove': {
+                    // For bulk remove, we might not need this if we handle it via 'remove' type with calculated slots
+                    // But if we use dateStr...
+                    return state;
+                }
+            }
+            return state;
+        }
+    );
 
     // Drag selection state
     const [isDragging, setIsDragging] = useState(false)
