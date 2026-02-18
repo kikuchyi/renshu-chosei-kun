@@ -6,7 +6,7 @@ import { JoinGroupDialog } from '@/components/join-group-dialog'
 import { GroupList } from '@/components/group-list'
 import { logout } from '@/app/actions'
 import { Button } from '@/components/ui/button'
-import { LogOut } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function Home() {
@@ -34,7 +34,6 @@ export default async function Home() {
 
   if (error) {
     console.error('Error fetching groups:', error)
-    // Handle error gracefully
     return <div>Error loading groups</div>
   }
 
@@ -44,27 +43,43 @@ export default async function Home() {
   const displayName = profile?.display_name || 'ゲスト'
 
   return (
-    <div className="container mx-auto py-10 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">{displayName}のグループ</h1>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/settings">
-              プロフィール設定
-            </Link>
-          </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate mr-2">
+              {displayName}
+            </h1>
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <Button variant="ghost" size="icon" asChild className="h-9 w-9">
+                <Link href="/settings">
+                  <Settings className="h-4 w-4" />
+                  <span className="sr-only">プロフィール設定</span>
+                </Link>
+              </Button>
+              <form action={logout} className="inline">
+                <Button type="submit" variant="ghost" size="icon" className="h-9 w-9">
+                  <LogOut className="h-4 w-4" />
+                  <span className="sr-only">ログアウト</span>
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6">
+        {/* Action Buttons */}
+        <div className="flex gap-2 mb-6">
           <JoinGroupDialog />
           <CreateGroupDialog />
-          <form action={logout} className="inline">
-            <Button type="submit" variant="outline" size="sm">
-              <LogOut className="h-4 w-4 mr-2" />
-              ログアウト
-            </Button>
-          </form>
         </div>
-      </div>
 
-      <GroupList groups={groups} currentUserId={user.id} />
+        {/* Group List */}
+        <GroupList groups={groups} currentUserId={user.id} />
+      </main>
     </div>
   )
 }
