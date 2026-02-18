@@ -697,7 +697,7 @@ export function AvailabilityHeatmap({
                                 </div>
 
                                 {/* Heatmap Grid */}
-                                <div className="space-y-px touch-none">
+                                <div className="space-y-px">
                                     {timeSlots.map(({ hour, minute }) => (
                                         <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1">
                                             <div className="p-1 text-right text-[10px] text-gray-400 font-mono -mt-2 pr-2">

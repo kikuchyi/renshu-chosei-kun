@@ -563,7 +563,7 @@ export function AvailabilityInput({
                             ))}
                         </div>
 
-                        <div className="space-y-px touch-none">
+                        <div className="space-y-px">
                             {timeSlots.map(({ hour, minute }) => (
                                 <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1 h-7">
                                     <div className="text-[10px] text-gray-400 text-center flex items-center justify-center font-mono">
