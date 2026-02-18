@@ -283,6 +283,84 @@ export function AvailabilityInput({
         })
     }
 
+    // Touch support
+    const handleTouchStart = (e: React.TouchEvent, date: Date, hour: number, minute: number) => {
+        // Prevent default to stop scrolling/zooming while dragging on the grid
+        // However, we might want to allow scrolling if the user just taps.
+        // For now, let's try to detect if it's a drag or scroll? 
+        // Actually, for a grid like this, users usually accept that touching the grid means interacting with it.
+        // We can check if it's a multi-touch to allow zooming/scrolling, but for single touch on a cell:
+        if (e.touches.length > 1) return
+
+        // We can't preventDefault here if we want to allow scrolling on initial touch if the user meant to scroll.
+        // But if they start on a cell, they likely want to select.
+        // Let's try to prevent default to ensure the drag works smoothly without scrolling the page.
+        // Note: interacting with "passive" listeners might be an issue, but React events are usually not passive by default in this context?
+        // Actually, scrolling is often preferred to be default.
+        // A common pattern is: if the user moves mostly vertically, it's a scroll.
+        // But here we want to drag vertically too to select time slots.
+        // So we should probably prevent default if we decide we are in "drag mode".
+
+        // For simplicity and standard UI for this type of app (like Google Calendar day view),
+        // touching and holding or moving usually initiates selection.
+
+        const target = e.target as HTMLElement
+        // Try to find the button element if the target is a child
+        const button = target.closest('button')
+        if (!button) return
+
+        if (isBusy(date, hour, minute)) return
+
+        setIsDragging(true)
+        const currentPriority = getPriority(date, hour, minute)
+        const mode = currentPriority === null ? 'add' : 'remove'
+        setDragMode(mode)
+
+        const slotId = `${date.toISOString()}-${hour}-${minute}`
+        setSelectedSlotIds(new Set([slotId]))
+    }
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isDragging) return
+
+        // Prevent scrolling while dragging
+        if (e.cancelable) {
+            e.preventDefault()
+        }
+
+        const touch = e.touches[0]
+        const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement
+
+        if (!target) return
+
+        const button = target.closest('button')
+        if (!button) return
+
+        const dateStr = button.getAttribute('data-date')
+        const hourStr = button.getAttribute('data-hour')
+        const minuteStr = button.getAttribute('data-minute')
+
+        if (dateStr && hourStr && minuteStr) {
+            const date = new Date(dateStr)
+            const hour = parseInt(hourStr)
+            const minute = parseInt(minuteStr)
+
+            // Re-use logic from drag enter
+            if (isBusy(date, hour, minute)) return
+
+            const slotId = `${date.toISOString()}-${hour}-${minute}`
+            setSelectedSlotIds(prev => {
+                const newSet = new Set(prev)
+                newSet.add(slotId)
+                return newSet
+            })
+        }
+    }
+
+    const handleTouchEnd = () => {
+        handleDragEnd()
+    }
+
     return (
         <Card className="w-full">
             <CardHeader className="space-y-4 pb-4">
@@ -359,7 +437,7 @@ export function AvailabilityInput({
                             ))}
                         </div>
 
-                        <div className="space-y-px">
+                        <div className="space-y-px touch-none">
                             {timeSlots.map(({ hour, minute }) => (
                                 <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1 h-7">
                                     <div className="text-[10px] text-gray-400 text-center flex items-center justify-center font-mono">
@@ -382,17 +460,24 @@ export function AvailabilityInput({
                                         return (
                                             <button
                                                 key={`${day}-${hour}-${minute}`}
+                                                data-date={day.toISOString()}
+                                                data-hour={hour}
+                                                data-minute={minute}
                                                 onMouseDown={() => handleDragStart(day, hour, minute)}
                                                 onMouseEnter={() => handleDragEnter(day, hour, minute)}
+                                                onTouchStart={(e) => handleTouchStart(e, day, hour, minute)}
+                                                onTouchMove={handleTouchMove}
+                                                onTouchEnd={handleTouchEnd}
                                                 onClick={() => !isDragging && handleToggle(day, hour, minute)}
                                                 disabled={isPending}
                                                 className={cn(
-                                                    "rounded-sm border-[0.5px] text-[10px] flex items-center justify-center transition-colors relative select-none",
+                                                    "rounded-sm border-[0.5px] text-[10px] flex items-center justify-center transition-colors relative select-none touch-none",
                                                     (busy && displayPriority === null) ? "cursor-not-allowed bg-gray-800 border-gray-900" :
                                                         displayPriority === 1 ? "bg-yellow-100 border-yellow-300 text-yellow-800" :
                                                             othersBusy ? "bg-gray-800 border-gray-900" : "bg-white border-gray-200 hover:bg-gray-50",
                                                     isSelected && "ring-1 ring-blue-500 z-10"
                                                 )}
+                                                style={{ touchAction: 'none' }}
                                             >
                                                 {displayPriority === 1 ? '△' : (displayPriority === null && !busy && !othersBusy && count > 0 ? (
                                                     <span className="text-blue-300 font-bold opacity-50">{count}</span>

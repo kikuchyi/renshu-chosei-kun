@@ -405,6 +405,70 @@ export function AvailabilityHeatmap({
         }
     }, [viewMode, practiceEvents, weekDays, calendarDays])
 
+    // Touch support
+    const handleTouchStart = (e: React.TouchEvent, day: Date, hour: number, minute: number) => {
+        if (viewMode !== 'week' || e.touches.length > 1) return
+
+        const target = e.target as HTMLElement
+        // Navigate up to find the cell div if needed, though we likely clicked on it or a child
+        // In this case, the div is the interactive element.
+        // Let's ensure we are targeting the cell.
+
+        setIsDragging(true)
+        const practiceId = getPracticeEventId(day, hour, minute)
+        const mode = practiceId ? 'remove' : 'add'
+        setDragMode(mode)
+
+        const slotId = `${day.toISOString()}-${hour}-${minute}`
+        setSelectedDragSlotIds(new Set([slotId]))
+    }
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isDragging || viewMode !== 'week') return
+
+        if (e.cancelable) {
+            e.preventDefault()
+        }
+
+        const touch = e.touches[0]
+        const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement
+        if (!target) return
+
+        // We need to find the element that has the data attributes
+        // It might be the target itself or a parent, or if we have overlays (like text), a parent.
+        // We added attributes to the cell div. 
+        // We can search up the tree or check the target.
+        // Since we are moving over elements, `target` is what is under the finger.
+
+        // Let's use Closest to be safe if there are inner elements.
+        // Note: `closest` might not work if we haven't added a class or id to reliably identify.
+        // But we are adding data attributes. `closest('[data-date]')` should work.
+
+        const cell = target.closest('[data-date]') as HTMLElement
+        if (!cell) return
+
+        const dateStr = cell.getAttribute('data-date')
+        const hourStr = cell.getAttribute('data-hour')
+        const minuteStr = cell.getAttribute('data-minute')
+
+        if (dateStr && hourStr && minuteStr) {
+            const date = new Date(dateStr)
+            const hour = parseInt(hourStr)
+            const minute = parseInt(minuteStr)
+
+            const slotId = `${date.toISOString()}-${hour}-${minute}`
+            setSelectedDragSlotIds(prev => {
+                const newSet = new Set(prev)
+                newSet.add(slotId)
+                return newSet
+            })
+        }
+    }
+
+    const handleTouchEnd = () => {
+        handleDragEnd()
+    }
+
     return (
         <div className="space-y-6">
             <Card className="w-full max-w-5xl mx-auto shadow-lg">
@@ -549,7 +613,7 @@ export function AvailabilityHeatmap({
                                 </div>
 
                                 {/* Heatmap Grid */}
-                                <div className="space-y-px">
+                                <div className="space-y-px touch-none">
                                     {timeSlots.map(({ hour, minute }) => (
                                         <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1">
                                             <div className="p-1 text-right text-[10px] text-gray-400 font-mono -mt-2 pr-2">
@@ -566,11 +630,17 @@ export function AvailabilityHeatmap({
                                                 return (
                                                     <div
                                                         key={dayIndex}
+                                                        data-date={day.toISOString()}
+                                                        data-hour={hour}
+                                                        data-minute={minute}
                                                         onMouseDown={() => handleDragStart(day, hour, minute)}
                                                         onMouseEnter={() => handleDragEnter(day, hour, minute)}
+                                                        onTouchStart={(e) => handleTouchStart(e, day, hour, minute)}
+                                                        onTouchMove={handleTouchMove}
+                                                        onTouchEnd={handleTouchEnd}
                                                         onClick={() => !isDragging && handleCellClick(day, hour, minute)}
                                                         className={cn(
-                                                            "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center",
+                                                            "h-6 rounded-sm transition-all duration-200 cursor-pointer border-[0.5px] relative group select-none flex items-center justify-center touch-none",
                                                             isPractice ? "bg-green-500 border-green-600 hover:bg-green-600 z-10" : intensityClass,
                                                             (isDragging && dragMode === 'remove' && isPractice && selectedDragSlotIds.has(slotId)) && "opacity-50",
                                                             (isDragging && dragMode === 'add' && !isPractice && selectedDragSlotIds.has(slotId)) && "bg-green-500 border-green-600"
@@ -580,6 +650,7 @@ export function AvailabilityHeatmap({
                                                                 busy ? "予定あり" :
                                                                     `${format(day, 'M/d')} ${hour}:${minute === 0 ? '00' : '30'} - スコア: ${score}`
                                                         }
+                                                        style={{ touchAction: 'none' }}
                                                     >
                                                         {isPractice && (
                                                             <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-[8px]">
