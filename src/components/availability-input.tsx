@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useTransition, useEffect, useOptimistic } from 'react'
+import React, { useState, useTransition, useEffect, useOptimistic, useRef } from 'react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, getHours, set } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import {
@@ -100,6 +100,10 @@ export function AvailabilityInput({
     const [isDragging, setIsDragging] = useState(false)
     const [dragMode, setDragMode] = useState<'add' | 'remove' | null>(null)
     const [selectedSlotIds, setSelectedSlotIds] = useState<Set<string>>(new Set())
+
+    // Long press refs
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+    const startPosRef = useRef<{ x: number, y: number } | null>(null)
 
     const startOfCurrentWeek = startOfWeek(currentDate, { weekStartsOn: 1 }) // Monday start
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i))
@@ -394,50 +398,59 @@ export function AvailabilityInput({
 
     // Touch support
     const handleTouchStart = (e: React.TouchEvent, date: Date, hour: number, minute: number) => {
-        // Prevent default to stop scrolling/zooming while dragging on the grid
-        // However, we might want to allow scrolling if the user just taps.
-        // For now, let's try to detect if it's a drag or scroll? 
-        // Actually, for a grid like this, users usually accept that touching the grid means interacting with it.
-        // We can check if it's a multi-touch to allow zooming/scrolling, but for single touch on a cell:
         if (e.touches.length > 1) return
 
-        // We can't preventDefault here if we want to allow scrolling on initial touch if the user meant to scroll.
-        // But if they start on a cell, they likely want to select.
-        // Let's try to prevent default to ensure the drag works smoothly without scrolling the page.
-        // Note: interacting with "passive" listeners might be an issue, but React events are usually not passive by default in this context?
-        // Actually, scrolling is often preferred to be default.
-        // A common pattern is: if the user moves mostly vertically, it's a scroll.
-        // But here we want to drag vertically too to select time slots.
-        // So we should probably prevent default if we decide we are in "drag mode".
+        // Don't prevent default here to allow scrolling initially
 
-        // For simplicity and standard UI for this type of app (like Google Calendar day view),
-        // touching and holding or moving usually initiates selection.
+        const touch = e.touches[0]
+        startPosRef.current = { x: touch.clientX, y: touch.clientY }
 
         const target = e.target as HTMLElement
-        // Try to find the button element if the target is a child
         const button = target.closest('button')
         if (!button) return
 
         if (isBusy(date, hour, minute)) return
 
-        setIsDragging(true)
-        const currentPriority = getPriority(date, hour, minute)
-        const mode = currentPriority === null ? 'add' : 'remove'
-        setDragMode(mode)
+        // Start long press timer
+        longPressTimerRef.current = setTimeout(() => {
+            setIsDragging(true)
+            const currentPriority = getPriority(date, hour, minute)
+            const mode = currentPriority === null ? 'add' : 'remove'
+            setDragMode(mode)
 
-        const slotId = `${date.toISOString()}-${hour}-${minute}`
-        setSelectedSlotIds(new Set([slotId]))
+            const slotId = `${date.toISOString()}-${hour}-${minute}`
+            setSelectedSlotIds(new Set([slotId]))
+
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50)
+            }
+        }, 500) // 500ms long press
     }
 
     const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isDragging) return
+        const touch = e.touches[0]
 
-        // Prevent scrolling while dragging
+        if (!isDragging) {
+            // Check if moved enough to cancel long press
+            if (startPosRef.current) {
+                const dx = Math.abs(touch.clientX - startPosRef.current.x)
+                const dy = Math.abs(touch.clientY - startPosRef.current.y)
+                if (dx > 10 || dy > 10) {
+                    if (longPressTimerRef.current) {
+                        clearTimeout(longPressTimerRef.current)
+                        longPressTimerRef.current = null
+                    }
+                }
+            }
+            return
+        }
+
+        // Processing drag selection
         if (e.cancelable) {
             e.preventDefault()
         }
 
-        const touch = e.touches[0]
         const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement
 
         if (!target) return
@@ -467,6 +480,10 @@ export function AvailabilityInput({
     }
 
     const handleTouchEnd = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current)
+            longPressTimerRef.current = null
+        }
         handleDragEnd()
     }
 
@@ -580,13 +597,12 @@ export function AvailabilityInput({
                                                 onClick={() => !isDragging && handleToggle(day, hour, minute)}
                                                 disabled={isPending}
                                                 className={cn(
-                                                    "rounded-sm border-[0.5px] text-[10px] flex items-center justify-center transition-colors relative select-none touch-none",
+                                                    "rounded-sm border-[0.5px] text-[10px] flex items-center justify-center transition-colors relative select-none",
                                                     (busy && displayPriority === null) ? "cursor-not-allowed bg-gray-800 border-gray-900" :
                                                         displayPriority === 1 ? "bg-yellow-100 border-yellow-300 text-yellow-800" :
                                                             othersBusy ? "bg-gray-800 border-gray-900" : "bg-white border-gray-200 hover:bg-gray-50",
                                                     isSelected && "ring-1 ring-blue-500 z-10"
                                                 )}
-                                                style={{ touchAction: 'none' }}
                                             >
                                                 {displayPriority === 1 ? '△' : (displayPriority === null && !busy && !othersBusy && count > 0 ? (
                                                     <span className="text-blue-300 font-bold opacity-50">{count}</span>
