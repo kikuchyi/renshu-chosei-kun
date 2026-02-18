@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useTransition } from 'react'
+import React, { useState, useEffect, useTransition, useOptimistic } from 'react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
@@ -60,6 +60,42 @@ export function AvailabilityHeatmap({
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
     const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set()) // keep this for whatever uses it? actually it seems unused in provided view.
     const [isPending, startTransition] = useTransition()
+
+    // Optimistic UI
+    const [optimisticPracticeEvents, addOptimisticPracticeEvent] = useOptimistic(
+        practiceEvents,
+        (state: PracticeEvent[], action: {
+            type: 'add' | 'remove',
+            slots?: { start: string, end: string }[],
+            id?: string
+        }) => {
+            switch (action.type) {
+                case 'add': {
+                    const newSlots = action.slots || [];
+                    const newEvents = newSlots.map(slot => ({
+                        id: 'opt-' + Math.random(),
+                        group_id: groupId,
+                        start_time: slot.start,
+                        end_time: slot.end,
+                        created_at: new Date().toISOString(),
+                        created_by: 'optimistic'
+                    } as unknown as PracticeEvent));
+                    return [...state, ...newEvents];
+                }
+                case 'remove': {
+                    if (action.id) {
+                        return state.filter(e => e.id !== action.id);
+                    }
+                    if (action.slots) {
+                        const slotsToRemove = new Set(action.slots.map(s => s.start));
+                        return state.filter(e => !slotsToRemove.has(e.start_time));
+                    }
+                    return state;
+                }
+            }
+            return state;
+        }
+    );
 
     // Drag selection state
     const [isDragging, setIsDragging] = useState(false)
@@ -156,7 +192,7 @@ export function AvailabilityHeatmap({
         if (hasBusySlot) return true
 
         // Check current user's Google Calendar events (already fetched for week)
-        return calendarEvents.some(event => {
+        return localCalendarEvents.some(event => { // Fixed to use localCalendarEvents
             const eventStart = new Date(event.start.dateTime || event.start.date || '')
             const eventEnd = new Date(event.end.dateTime || event.end.date || '')
 
@@ -205,12 +241,12 @@ export function AvailabilityHeatmap({
     // Key: Timestamp of the start time, Value: eventId
     const confirmedSlots = React.useMemo(() => {
         const map = new Map<number, string>()
-        practiceEvents.forEach(event => {
+        optimisticPracticeEvents.forEach(event => {
             const date = new Date(event.start_time)
             map.set(date.getTime(), event.id)
         })
         return map
-    }, [practiceEvents])
+    }, [optimisticPracticeEvents])
 
     const getPracticeEventId = (day: Date, hour: number, minute: number) => {
         const start = new Date(day)
@@ -272,6 +308,19 @@ export function AvailabilityHeatmap({
         })
 
         startTransition(async () => {
+            // Optimistic update
+            if (dragMode === 'add') {
+                addOptimisticPracticeEvent({
+                    type: 'add',
+                    slots: slots
+                })
+            } else {
+                addOptimisticPracticeEvent({
+                    type: 'remove',
+                    slots: slots
+                })
+            }
+
             try {
                 const result = await updatePracticeEvents(groupId, dragMode, slots)
                 if (!result.success) {
@@ -309,7 +358,7 @@ export function AvailabilityHeatmap({
     // Get practice events for a specific day
     const getPracticeEventsForDay = (date: Date) => {
         // Filter events that match the year, month, and day
-        return practiceEvents.filter(event => {
+        return optimisticPracticeEvents.filter(event => {
             const eventStart = new Date(event.start_time)
             return eventStart.getFullYear() === date.getFullYear() &&
                 eventStart.getMonth() === date.getMonth() &&
@@ -359,6 +408,12 @@ export function AvailabilityHeatmap({
                 const eventId = getPracticeEventId(date, hour, minute)
 
                 if (eventId) {
+                    // Optimistic remove
+                    addOptimisticPracticeEvent({
+                        type: 'remove',
+                        id: eventId
+                    });
+
                     await deletePracticeEvent(eventId, groupId)
                     toast.success('練習予定を取り消しました')
                 } else {
@@ -370,6 +425,12 @@ export function AvailabilityHeatmap({
                     } else {
                         end.setHours(hour + 1, 0, 0, 0)
                     }
+
+                    // Optimistic add
+                    addOptimisticPracticeEvent({
+                        type: 'add',
+                        slots: [{ start: start.toISOString(), end: end.toISOString() }]
+                    });
 
                     await createPracticeEvent(
                         groupId,
@@ -391,19 +452,19 @@ export function AvailabilityHeatmap({
         if (viewMode === 'week') {
             const start = weekDays[0]
             const end = addDays(weekDays[6], 1)
-            return practiceEvents.filter(e => {
+            return optimisticPracticeEvents.filter(e => {
                 const eStart = new Date(e.start_time)
                 return eStart >= start && eStart < end
             })
         } else {
             const start = calendarDays[0]
             const end = addDays(calendarDays[calendarDays.length - 1], 1)
-            return practiceEvents.filter(e => {
+            return optimisticPracticeEvents.filter(e => {
                 const eStart = new Date(e.start_time)
                 return eStart >= start && eStart < end
             })
         }
-    }, [viewMode, practiceEvents, weekDays, calendarDays])
+    }, [viewMode, optimisticPracticeEvents, weekDays, calendarDays])
 
     // Touch support
     const handleTouchStart = (e: React.TouchEvent, day: Date, hour: number, minute: number) => {

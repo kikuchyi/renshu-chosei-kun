@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useTransition, useEffect } from 'react'
+import React, { useState, useTransition, useEffect, useOptimistic } from 'react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, getHours, set } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import {
@@ -41,9 +41,60 @@ export function AvailabilityInput({
 }: AvailabilityInputProps) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [isPending, startTransition] = useTransition()
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(initialCalendarEvents) // Initialize state with prop
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(initialCalendarEvents)
     const [isLoadingCalendar, setIsLoadingCalendar] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+
+    // Optimistic UI
+    const [optimisticAvailabilities, addOptimisticAvailability] = useOptimistic<Availability[], {
+        type: 'add' | 'remove' | 'bulk_remove',
+        slots?: { start: string, end: string, priority?: number }[],
+        dateStr?: string
+    }>(
+        availabilities,
+        (state, action) => {
+            switch (action.type) {
+                case 'add':
+                case 'remove': {
+                    const newSlots = action.slots || [];
+                    const updateStartTimes = new Set(newSlots.map(s => s.start));
+                    const filtered = state.filter(a => !updateStartTimes.has(a.start_time));
+
+                    if (action.type === 'add') {
+                        const newAvailabilities = newSlots.map(slot => ({
+                            id: 'optimistic-' + Math.random(),
+                            user_id: userId,
+                            group_id: groupId,
+                            start_time: slot.start,
+                            end_time: slot.end,
+                            priority: slot.priority || 1,
+                            created_at: new Date().toISOString()
+                        } as Availability));
+                        return [...filtered, ...newAvailabilities];
+                    }
+                    return filtered;
+                }
+                case 'bulk_remove': {
+                    const targetDate = action.dateStr!;
+                    // start_time is ISO string, so it includes date. 
+                    // We need to match YYYY-MM-DD.
+                    // Assuming local time for dateStr is passed correctly or comparing ISO dates?
+                    // availabilities start_time is ISO (UTC usually).
+                    // dateStr passed from handleBulkToggle is formatted 'yyyy-MM-dd'.
+                    // We need to be careful with timezones.
+                    // However, bulkToggle usually operates on the "date" as viewed by the user.
+                    // Let's match roughly or better, rely on the fact that existing logic handles it.
+                    // Actually, simpler: in handleBulkToggle we know the exact range for that day?
+                    // We can just calculate the range and filter out.
+                    // For simplicity in reducer, let's use the range filtering if possible, or just string match if strictly YYYY-MM-DD matches start_time's YYYY-MM-DD (converted to local?).
+                    // Let's use a simpler approach: handleBulkToggle generates the 'remove' slots for the whole day and calls 'remove' type?
+                    // Yes, let's do that.
+                    return state;
+                }
+            }
+            return state;
+        }
+    );
 
     // Drag selection state
     const [isDragging, setIsDragging] = useState(false)
@@ -92,7 +143,7 @@ export function AvailabilityInput({
         const start = new Date(date)
         start.setHours(hour, minute, 0, 0)
 
-        const availability = availabilities.find(a =>
+        const availability = optimisticAvailabilities.find(a =>
             a.user_id === userId &&
             new Date(a.start_time).getTime() === start.getTime()
         )
@@ -149,7 +200,7 @@ export function AvailabilityInput({
         const start = new Date(date)
         start.setHours(hour, minute, 0, 0)
 
-        const count = availabilities.filter(a =>
+        const count = optimisticAvailabilities.filter(a =>
             new Date(a.start_time).getTime() === start.getTime()
         ).length
         return count
@@ -176,10 +227,22 @@ export function AvailabilityInput({
 
             const startIso = start.toISOString()
             const endIso = end.toISOString()
-            const currentPriority = getPriority(date, hour, minute)
 
             // Toggle: null -> 1 -> null
             const newPriority = currentPriority === null ? 1 : null
+
+            // Optimistic update
+            if (newPriority === 1) {
+                addOptimisticAvailability({
+                    type: 'add',
+                    slots: [{ start: startIso, end: endIso, priority: 1 }]
+                })
+            } else {
+                addOptimisticAvailability({
+                    type: 'remove',
+                    slots: [{ start: startIso, end: endIso }]
+                })
+            }
 
             try {
                 await toggleAvailability(groupId, startIso, endIso, newPriority)
@@ -244,6 +307,19 @@ export function AvailabilityInput({
         })
 
         startTransition(async () => {
+            // Optimistic update
+            if (dragMode === 'add') {
+                addOptimisticAvailability({
+                    type: 'add',
+                    slots: slots.map(s => ({ ...s, priority: 1 }))
+                })
+            } else {
+                addOptimisticAvailability({
+                    type: 'remove',
+                    slots: slots
+                })
+            }
+
             try {
                 await updateAvailabilities(groupId, dragMode, slots)
             } catch (error) {
@@ -270,6 +346,39 @@ export function AvailabilityInput({
     const handleBulkToggle = (date: Date, priority: number | null) => {
         startTransition(async () => {
             const dateStr = format(date, 'yyyy-MM-dd')
+
+            // Calculate slots for the whole day to perform optimistic update
+            // We need to match the logic of bulkToggleAvailability on server or just generate all slots
+            const slots: { start: string, end: string, priority?: number }[] = []
+            if (priority === 1) {
+                // Add all slots for the day (startHour to endHour)
+                for (let h = startHour; h < endHour; h++) {
+                    for (let m = 0; m < 60; m += 30) {
+                        // Check if busy? Default logic might override? 
+                        // Usually bulk set ignores busy? Or server checks it?
+                        // Client should check busy to be accurate.
+                        if (!isBusy(date, h, m)) {
+                            const s = new Date(date); s.setHours(h, m, 0, 0);
+                            const e = new Date(date);
+                            if (m === 0) e.setHours(h, 30, 0, 0); else e.setHours(h + 1, 0, 0, 0);
+                            slots.push({ start: s.toISOString(), end: e.toISOString(), priority: 1 });
+                        }
+                    }
+                }
+                addOptimisticAvailability({ type: 'add', slots });
+            } else {
+                // Remove all slots for the day
+                for (let h = startHour; h < endHour; h++) {
+                    for (let m = 0; m < 60; m += 30) {
+                        const s = new Date(date); s.setHours(h, m, 0, 0);
+                        const e = new Date(date);
+                        if (m === 0) e.setHours(h, 30, 0, 0); else e.setHours(h + 1, 0, 0, 0);
+                        slots.push({ start: s.toISOString(), end: e.toISOString() });
+                    }
+                }
+                addOptimisticAvailability({ type: 'remove', slots });
+            }
+
             try {
                 await bulkToggleAvailability(groupId, dateStr, priority)
                 if (priority === null) {
