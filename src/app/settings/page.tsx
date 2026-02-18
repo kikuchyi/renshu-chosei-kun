@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { DeleteAccountButton } from '@/components/delete-account-button'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -93,6 +94,12 @@ export default async function SettingsPage() {
                     </CardFooter>
                 </form>
             </Card>
+
+            {/* Danger Zone */}
+            <div className="max-w-md mx-auto mt-8 p-4 border border-red-200 rounded-lg bg-red-50/50">
+                <h3 className="text-sm font-medium text-red-800 mb-3">危険な操作</h3>
+                <DeleteAccountButton />
+            </div>
         </div>
     )
 }

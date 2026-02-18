@@ -735,3 +735,34 @@ export async function deleteCleanupEvent(id: string) {
     if (error) throw new Error(error.message)
     revalidatePath('/cleanup')
 }
+
+export async function deleteAccount() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('認証されていません')
+    }
+
+    // 1. Delete from public.users (cascades to group_members, availabilities, etc.)
+    const { error: deleteUserError } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', user.id)
+
+    if (deleteUserError) {
+        console.error('Error deleting user data:', deleteUserError)
+        throw new Error('アカウントデータの削除に失敗しました')
+    }
+
+    // 2. Delete busy slots
+    await supabase
+        .from('user_busy_slots')
+        .delete()
+        .eq('user_id', user.id)
+
+    // 3. Sign out
+    await supabase.auth.signOut()
+
+    redirect('/login')
+}
