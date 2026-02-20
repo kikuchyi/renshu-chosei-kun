@@ -621,7 +621,7 @@ export function AvailabilityHeatmap({
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <div className="w-2.5 h-2.5 bg-yellow-300 border border-yellow-400 rounded-sm"></div>
-                                    <span>候補</span>
+                                    <span>△</span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <div className="w-2.5 h-2.5 bg-green-500 border border-green-600 rounded-sm"></div>
