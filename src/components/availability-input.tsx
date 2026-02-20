@@ -548,44 +548,52 @@ export function AvailabilityInput({
                             Gカレンダー更新
                         </Button>
                         {availableCalendars.length > 0 && (
-                            <div className="relative">
+                            <>
                                 <Button variant="outline" size="sm" onClick={() => setShowCalendarPicker(v => !v)}>
                                     <Settings2 className="h-4 w-4 mr-2" />
                                     カレンダー選択
-                                    <span className="ml-1 text-xs text-gray-500">({selectedCalendarIds.length}/{availableCalendars.length})</span>
+                                    <span className="ml-1 text-xs text-gray-500">({selectedCalendarIds.length})</span>
                                 </Button>
                                 {showCalendarPicker && (
-                                    <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-white border rounded-lg shadow-lg p-2 max-h-60 overflow-y-auto">
-                                        <div className="text-xs font-medium text-gray-500 px-2 py-1 mb-1">反映するカレンダーを選択</div>
-                                        {availableCalendars.map(cal => (
-                                            <button
-                                                key={cal.id}
-                                                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-gray-50 text-left"
-                                                onClick={() => toggleCalendar(cal.id)}
-                                            >
-                                                <div className={cn(
-                                                    "w-4 h-4 rounded border flex items-center justify-center shrink-0",
-                                                    selectedCalendarIds.includes(cal.id)
-                                                        ? "bg-blue-600 border-blue-600 text-white"
-                                                        : "border-gray-300"
-                                                )}>
-                                                    {selectedCalendarIds.includes(cal.id) && <Check className="h-3 w-3" />}
-                                                </div>
-                                                {cal.backgroundColor && (
-                                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cal.backgroundColor }} />
-                                                )}
-                                                <span className="truncate">{cal.summary}</span>
-                                                {cal.primary && <span className="text-xs text-gray-400 shrink-0">(メイン)</span>}
-                                            </button>
-                                        ))}
-                                        <div className="border-t mt-1 pt-1">
-                                            <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => { setShowCalendarPicker(false); fetchEvents(); }}>
-                                                選択を反映して更新
-                                            </Button>
+                                    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                                        <div className="fixed inset-0 bg-black/30" onClick={() => setShowCalendarPicker(false)} />
+                                        <div className="relative bg-white rounded-t-xl sm:rounded-xl shadow-xl w-full sm:max-w-sm max-h-[70vh] flex flex-col">
+                                            <div className="flex items-center justify-between p-4 border-b">
+                                                <h3 className="font-medium text-sm">反映するカレンダーを選択</h3>
+                                                <button onClick={() => setShowCalendarPicker(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+                                            </div>
+                                            <div className="overflow-y-auto flex-1 p-2">
+                                                {availableCalendars.map(cal => (
+                                                    <button
+                                                        key={cal.id}
+                                                        className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 active:bg-gray-100 text-left"
+                                                        onClick={() => toggleCalendar(cal.id)}
+                                                    >
+                                                        <div className={cn(
+                                                            "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                                                            selectedCalendarIds.includes(cal.id)
+                                                                ? "bg-blue-600 border-blue-600 text-white"
+                                                                : "border-gray-300"
+                                                        )}>
+                                                            {selectedCalendarIds.includes(cal.id) && <Check className="h-3 w-3" />}
+                                                        </div>
+                                                        {cal.backgroundColor && (
+                                                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cal.backgroundColor }} />
+                                                        )}
+                                                        <span className="truncate flex-1">{cal.summary}</span>
+                                                        {cal.primary && <span className="text-xs text-gray-400 shrink-0">(メイン)</span>}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="border-t p-3">
+                                                <Button size="sm" className="w-full" onClick={() => { setShowCalendarPicker(false); fetchEvents(); }}>
+                                                    選択を反映して更新
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>

@@ -33,13 +33,15 @@ export async function listCalendars(accessToken: string): Promise<CalendarInfo[]
     }
 
     const data = await response.json()
-    return (data.items || []).map((cal: any) => ({
-        id: cal.id,
-        summary: cal.summary,
-        primary: cal.primary || false,
-        backgroundColor: cal.backgroundColor,
-        selected: cal.selected,
-    }))
+    return (data.items || [])
+        .filter((cal: any) => !cal.id.includes('#holiday@'))
+        .map((cal: any) => ({
+            id: cal.id,
+            summary: cal.summary,
+            primary: cal.primary || false,
+            backgroundColor: cal.backgroundColor,
+            selected: cal.selected,
+        }))
 }
 
 export async function listEvents(
