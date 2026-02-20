@@ -77,12 +77,12 @@ export default async function GroupPage(props: PageProps) {
                         ダッシュボードに戻る
                     </Link>
                 </Button>
-                <div className="flex justify-between items-center mb-6">
-                    <div>
+                <div className="mb-6">
+                    <div className="mb-3">
                         <h1 className="text-2xl font-bold tracking-tight">{group.name}</h1>
                         <p className="text-sm text-gray-500">招待コード: {group.invite_code}</p>
                     </div>
-                    <div className="flex gap-2 items-center">
+                    <div className="flex flex-wrap gap-2">
                         <GoogleReLoginButton />
                         {group.created_by === user.id && (
                             <GroupTimeSettings

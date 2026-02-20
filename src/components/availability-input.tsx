@@ -529,14 +529,10 @@ export function AvailabilityInput({
             <CardHeader className="space-y-4 pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <CardTitle className="flex items-baseline gap-2">
-                            <span>予定の入力</span>
-                            <span className="text-sm font-normal text-gray-500">
-                                (Googleカレンダーを連携してください)
-                            </span>
-                        </CardTitle>
-                        <CardDescription>
-                            予定はないが、好ましくない時間帯には△を入力してください。
+                        <CardTitle className="text-lg">予定の入力</CardTitle>
+                        <CardDescription className="mt-1">
+                            Googleカレンダーを連携して予定を反映してください。
+                            <span className="block mt-1">予定はないが好ましくない時間帯には△を入力してください。</span>
                             <span className="block mt-1 text-[10px] text-gray-500">
                                 ※ <span className="inline-block w-2 h-2 bg-gray-800 mr-1 align-middle"></span> 誰か1人でもGoogle予定がある時間帯は濃い灰色で表示されます
                             </span>
