@@ -96,9 +96,9 @@ export function ScheduleList({ practiceEvents, groupId }: ScheduleListProps) {
 
     return (
         <Card className="w-full max-w-5xl mx-auto mt-8 shadow-sm border-dashed">
-            <CardHeader className="flex flex-row items-center justify-between py-4 gap-2">
+            <CardHeader className="py-4 space-y-3">
                 <CardTitle className="text-lg font-bold text-gray-700">決定スケジュール一覧</CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" size="sm" onClick={copyToClipboard}>
                         {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
                         {copied ? 'コピー完了' : '一括コピー'}
