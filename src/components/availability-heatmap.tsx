@@ -795,8 +795,6 @@ export function AvailabilityHeatmap({
                                     {calendarDays.map((day, i) => {
                                         const isCurrentMonth = day.getMonth() === currentDate.getMonth()
                                         const isToday = isSameDay(day, new Date())
-                                        const dayScore = getDayScore(day)
-                                        const intensityClass = isCurrentMonth ? getDayIntensityClass(dayScore) : "bg-gray-50"
                                         const dayPracticeEvents = getPracticeEventsForDay(day)
                                         const mergedEvents = mergeContinuousEvents(dayPracticeEvents)
 
@@ -804,35 +802,32 @@ export function AvailabilityHeatmap({
                                             <div
                                                 key={i}
                                                 className={cn(
-                                                    "min-h-[100px] p-2 rounded-lg border flex flex-col transition-colors",
-                                                    intensityClass,
-                                                    !isCurrentMonth && "opacity-50",
+                                                    "min-h-[80px] p-1.5 rounded-lg border flex flex-col transition-colors cursor-pointer hover:bg-gray-50",
+                                                    isCurrentMonth ? "bg-white border-gray-200" : "bg-gray-50 border-gray-100 opacity-40",
                                                     isToday && "ring-2 ring-blue-500"
                                                 )}
                                                 onClick={() => {
                                                     onDateChange(day)
                                                     setViewMode('week')
                                                 }}
-                                                title={`${format(day, 'M月d日', { locale: ja })}: スコア ${dayScore}`}
+                                                title={format(day, 'M月d日', { locale: ja })}
                                             >
-                                                <div className="text-xs font-medium mb-1">
+                                                <div className={cn(
+                                                    "text-xs font-medium mb-1",
+                                                    isToday ? "text-blue-600" : "text-gray-500"
+                                                )}>
                                                     {format(day, 'd')}
                                                 </div>
                                                 {mergedEvents.length > 0 && (
-                                                    <div className="space-y-1 flex-1">
-                                                        {mergedEvents.map((event, i) => (
+                                                    <div className="space-y-0.5 flex-1">
+                                                        {mergedEvents.map((event, j) => (
                                                             <div
-                                                                key={i}
-                                                                className="bg-green-500 text-white text-xs px-1 py-0.5 rounded font-medium"
+                                                                key={j}
+                                                                className="bg-green-500 text-white text-[10px] leading-tight px-1 py-0.5 rounded font-medium break-words"
                                                             >
-                                                                {format(event.start, 'HH:mm')}-{format(event.end, 'HH:mm')}
+                                                                {format(event.start, 'H:mm')}-{format(event.end, 'H:mm')}
                                                             </div>
                                                         ))}
-                                                    </div>
-                                                )}
-                                                {mergedEvents.length === 0 && dayScore > 0 && (
-                                                    <div className="text-center flex-1 flex items-center justify-center">
-                                                        <span className="text-sm font-bold">{dayScore}</span>
                                                     </div>
                                                 )}
                                             </div>
