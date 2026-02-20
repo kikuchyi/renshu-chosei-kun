@@ -667,9 +667,11 @@ export function AvailabilityHeatmap({
 
                     {/* Date Navigation (Centered) */}
                     <div className="flex items-center justify-center gap-1">
-                        <Button variant="outline" size="icon" onClick={viewMode === 'week' ? handlePrevMonth : handlePrevMonth} title="1ヶ月前">
-                            <ChevronsLeft className="h-4 w-4" />
-                        </Button>
+                        {viewMode === 'week' && (
+                            <Button variant="outline" size="icon" onClick={handlePrevMonth} title="1ヶ月前">
+                                <ChevronsLeft className="h-4 w-4" />
+                            </Button>
+                        )}
                         <Button variant="outline" size="icon" onClick={viewMode === 'week' ? handlePrevWeek : handlePrevMonth} title={viewMode === 'week' ? "1週間前" : "1ヶ月前"}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -682,9 +684,11 @@ export function AvailabilityHeatmap({
                         <Button variant="outline" size="icon" onClick={viewMode === 'week' ? handleNextWeek : handleNextMonth} title={viewMode === 'week' ? "1週間後" : "1ヶ月後"}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="icon" onClick={viewMode === 'week' ? handleNextMonth : handleNextMonth} title="1ヶ月後">
-                            <ChevronsRight className="h-4 w-4" />
-                        </Button>
+                        {viewMode === 'week' && (
+                            <Button variant="outline" size="icon" onClick={handleNextMonth} title="1ヶ月後">
+                                <ChevronsRight className="h-4 w-4" />
+                            </Button>
+                        )}
                         {viewMode === 'week' && (
                             <Button variant="ghost" size="sm" onClick={handleToday} className="text-xs">
                                 今日
