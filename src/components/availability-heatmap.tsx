@@ -689,7 +689,7 @@ export function AvailabilityHeatmap({
                 <CardContent>
                     {viewMode === 'week' ? (
                         <div className="w-full overflow-x-auto pb-4">
-                            <div ref={gridRef} className="min-w-[600px]" style={isDragging ? { touchAction: 'none' } : undefined}>
+                            <div ref={gridRef} className="min-w-[700px]" style={isDragging ? { touchAction: 'none' } : undefined}>
                                 {/* Header Row */}
                                 <div className="grid grid-cols-9 gap-1 mb-2">
                                     <div className="p-2 text-center text-gray-500 text-xs font-medium pt-8">
