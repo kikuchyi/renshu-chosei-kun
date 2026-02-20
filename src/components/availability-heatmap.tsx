@@ -827,7 +827,7 @@ export function AvailabilityHeatmap({
                                                         {mergedEvents.map((event, j) => (
                                                             <div
                                                                 key={j}
-                                                                className="bg-green-500 text-white text-[10px] leading-tight px-1 py-0.5 rounded font-medium break-words"
+                                                                className="bg-green-500 text-white text-[8px] leading-tight px-0.5 py-px rounded font-medium whitespace-nowrap"
                                                             >
                                                                 {format(event.start, 'H:mm')}-{format(event.end, 'H:mm')}
                                                             </div>
