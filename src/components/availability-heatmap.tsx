@@ -182,6 +182,17 @@ export function AvailabilityHeatmap({
         return score
     }
 
+    const getTriangleCount = (date: Date, hour: number, minute: number) => {
+        const start = new Date(date)
+        start.setHours(hour, minute, 0, 0)
+        const users = new Set(
+            availabilities
+                .filter(a => new Date(a.start_time).getTime() === start.getTime() && (a.priority || 0) > 0)
+                .map(a => a.user_id)
+        )
+        return users.size
+    }
+
     const isBusy = (date: Date, hour: number, minute: number) => {
         const slotStart = new Date(date)
         slotStart.setHours(hour, minute, 0, 0)
@@ -743,10 +754,8 @@ export function AvailabilityHeatmap({
                                                                 決定
                                                             </div>
                                                         )}
-                                                        {busy && !isPractice && (
-                                                            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-[8px] font-medium">
-                                                                予定
-                                                            </div>
+                                                        {!isPractice && !busy && score > 0 && (
+                                                            <span className="text-[9px] font-bold">{getTriangleCount(day, hour, minute)}</span>
                                                         )}
                                                     </div>
                                                 )

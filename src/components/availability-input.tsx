@@ -685,9 +685,7 @@ export function AvailabilityInput({
                                                     isSelected && "ring-1 ring-blue-500 z-10"
                                                 )}
                                             >
-                                                {displayPriority === 1 ? '△' : (displayPriority === null && !busy && !othersBusy && count > 0 ? (
-                                                    <span className="text-blue-300 font-bold opacity-50">{count}</span>
-                                                ) : '')}
+                                                {displayPriority === 1 ? '△' : ''}
                                             </button>
                                         )
                                     })}
