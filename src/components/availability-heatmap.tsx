@@ -823,7 +823,7 @@ export function AvailabilityHeatmap({
                     )}
                 </CardContent>
             </Card>
-            <ScheduleList practiceEvents={practiceEvents} />
+            <ScheduleList practiceEvents={practiceEvents} groupId={groupId} />
         </div>
     )
 }

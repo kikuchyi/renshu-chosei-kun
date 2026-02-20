@@ -753,6 +753,40 @@ export async function deleteCleanupEvent(id: string) {
     revalidatePath('/cleanup')
 }
 
+export async function deleteAllPracticeEvents(groupId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('認証されていません')
+    }
+
+    // Verify admin role
+    const { data: member } = await supabase
+        .from('group_members')
+        .select('role')
+        .eq('group_id', groupId)
+        .eq('user_id', user.id)
+        .single()
+
+    if (!member || member.role !== 'admin') {
+        throw new Error('管理者権限が必要です')
+    }
+
+    const { error } = await supabase
+        .from('practice_events')
+        .delete()
+        .eq('group_id', groupId)
+
+    if (error) {
+        console.error('Error deleting all practice events:', error)
+        throw new Error('スケジュールの一括削除に失敗しました')
+    }
+
+    revalidatePath(`/groups/${groupId}`)
+    return { success: true }
+}
+
 export async function deleteAccount() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
