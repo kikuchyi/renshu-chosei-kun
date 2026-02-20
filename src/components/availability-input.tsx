@@ -547,12 +547,6 @@ export function AvailabilityInput({
                             {isLoadingCalendar ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <CalendarIcon className="h-4 w-4 mr-2" />}
                             Gカレンダー更新
                         </Button>
-                        <form action={signInWithGoogle}>
-                            <Button type="submit" variant="outline" size="sm">
-                                <LogIn className="h-4 w-4 mr-2" />
-                                Google再ログイン
-                            </Button>
-                        </form>
                         {availableCalendars.length > 0 && (
                             <>
                                 <Button variant="outline" size="sm" onClick={() => setShowCalendarPicker(v => !v)}>

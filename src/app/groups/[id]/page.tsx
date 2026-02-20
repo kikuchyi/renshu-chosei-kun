@@ -4,9 +4,10 @@ import { redirect } from 'next/navigation'
 import { GroupScheduleManager } from '@/components/group-schedule-manager'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, LogIn } from 'lucide-react'
 import { GroupMemberList } from '@/components/group-member-list'
 import { GroupTimeSettings } from '@/components/group-time-settings'
+import { GoogleReLoginButton } from '@/components/google-relogin-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,15 +82,16 @@ export default async function GroupPage(props: PageProps) {
                         <h1 className="text-2xl font-bold tracking-tight">{group.name}</h1>
                         <p className="text-sm text-gray-500">招待コード: {group.invite_code}</p>
                     </div>
-                    {group.created_by === user.id && (
-                        <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        <GoogleReLoginButton />
+                        {group.created_by === user.id && (
                             <GroupTimeSettings
                                 groupId={group.id}
                                 initialStartHour={group.start_hour}
                                 initialEndHour={group.end_hour}
                             />
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 <div className="space-y-8">
