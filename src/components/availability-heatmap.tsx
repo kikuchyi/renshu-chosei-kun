@@ -784,7 +784,7 @@ export function AvailabilityHeatmap({
                     ) : (
                         /* Monthly View */
                         <div className="w-full">
-                            <div className="w-full min-w-[350px]">
+                            <div className="w-full">
                                 {/* Calendar Header */}
                                 <div className="grid grid-cols-7 gap-px mb-2">
                                     {['月', '火', '水', '木', '金', '土', '日'].map((day, i) => (
@@ -795,7 +795,7 @@ export function AvailabilityHeatmap({
                                 </div>
 
                                 {/* Calendar Grid */}
-                                <div className="grid grid-cols-7 gap-2">
+                                <div className="grid grid-cols-7 gap-1">
                                     {calendarDays.map((day, i) => {
                                         const isCurrentMonth = day.getMonth() === currentDate.getMonth()
                                         const isToday = isSameDay(day, new Date())
