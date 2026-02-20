@@ -5,18 +5,18 @@ import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, getHours, 
 import { ja } from 'date-fns/locale'
 import {
     toggleAvailability,
-    bulkToggleAvailability,
     updateAvailabilities,
-    fetchCalendarEvents
+    fetchCalendarEvents,
+    fetchCalendarList
 } from '@/app/actions'
 import { signInWithGoogle } from '@/app/login/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RefreshCw, Settings2, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Database } from '@/types/supabase'
-import type { CalendarEvent } from '@/utils/google-calendar'
+import type { CalendarEvent, CalendarInfo } from '@/utils/google-calendar'
 
 type Availability = Database['public']['Tables']['availabilities']['Row']
 
@@ -48,6 +48,17 @@ export function AvailabilityInput({
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(initialCalendarEvents)
     const [isLoadingCalendar, setIsLoadingCalendar] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+
+    // Multi-calendar selection
+    const [availableCalendars, setAvailableCalendars] = useState<CalendarInfo[]>([])
+    const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(`bandsync_calendars_${userId}`)
+            return saved ? JSON.parse(saved) : []
+        }
+        return []
+    })
+    const [showCalendarPicker, setShowCalendarPicker] = useState(false)
 
     // Optimistic UI
     const [optimisticAvailabilities, addOptimisticAvailability] = useOptimistic<Availability[], {
@@ -113,18 +124,50 @@ export function AvailabilityInput({
     const handlePrevWeek = () => onDateChange(prev => subWeeks(prev, 1))
     const handleNextWeek = () => onDateChange(prev => addWeeks(prev, 1))
 
+    // Fetch calendar list on mount
+    useEffect(() => {
+        const loadCalendars = async () => {
+            try {
+                const result = await fetchCalendarList()
+                if (result.calendars.length > 0) {
+                    setAvailableCalendars(result.calendars)
+                    // If no saved selection, default to all calendars
+                    if (selectedCalendarIds.length === 0) {
+                        const allIds = result.calendars.map(c => c.id)
+                        setSelectedCalendarIds(allIds)
+                        localStorage.setItem(`bandsync_calendars_${userId}`, JSON.stringify(allIds))
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load calendar list:', e)
+            }
+        }
+        loadCalendars()
+    }, [])
+
+    const toggleCalendar = (calendarId: string) => {
+        setSelectedCalendarIds(prev => {
+            const next = prev.includes(calendarId)
+                ? prev.filter(id => id !== calendarId)
+                : [...prev, calendarId]
+            localStorage.setItem(`bandsync_calendars_${userId}`, JSON.stringify(next))
+            return next
+        })
+    }
+
     const fetchEvents = async () => {
         setIsLoadingCalendar(true)
         try {
             const start = weekDays[0].toISOString()
-            const end = addDays(weekDays[6], 2).toISOString() // Fetch a bit more to cover late night
-            const result: any = await fetchCalendarEvents(start, end)
+            const end = addDays(weekDays[6], 2).toISOString()
+            const ids = selectedCalendarIds.length > 0 ? selectedCalendarIds : undefined
+            const result: any = await fetchCalendarEvents(start, end, ids)
             const events = result.events || []
             setCalendarEvents(events)
             if (events.length > 0) {
-                toast.success('Googleカレンダーの予定を取得しました')
+                toast.success(`Googleカレンダーから${events.length}件の予定を取得しました`)
             } else {
-                toast.info(result.error || '予定が見つかりませんでした（または連携されていません）')
+                toast.info(result.error || '予定が見つかりませんでした')
             }
         } catch (error) {
             console.error(error)
@@ -360,42 +403,27 @@ export function AvailabilityInput({
 
     const handleBulkToggle = (date: Date, priority: number | null) => {
         startTransition(async () => {
-            const dateStr = format(date, 'yyyy-MM-dd')
+            // Generate all slots client-side to avoid timezone mismatch
+            const slots: { start: string, end: string }[] = []
+            for (let h = startHour; h < endHour; h++) {
+                for (let m = 0; m < 60; m += 30) {
+                    if (priority === 1 && isBusy(date, h, m)) continue
+                    const s = new Date(date); s.setHours(h, m, 0, 0);
+                    const e = new Date(date);
+                    if (m === 0) e.setHours(h, 30, 0, 0); else e.setHours(h + 1, 0, 0, 0);
+                    slots.push({ start: s.toISOString(), end: e.toISOString() });
+                }
+            }
 
-            // Calculate slots for the whole day to perform optimistic update
-            // We need to match the logic of bulkToggleAvailability on server or just generate all slots
-            const slots: { start: string, end: string, priority?: number }[] = []
+            // Optimistic update
             if (priority === 1) {
-                // Add all slots for the day (startHour to endHour)
-                for (let h = startHour; h < endHour; h++) {
-                    for (let m = 0; m < 60; m += 30) {
-                        // Check if busy? Default logic might override? 
-                        // Usually bulk set ignores busy? Or server checks it?
-                        // Client should check busy to be accurate.
-                        if (!isBusy(date, h, m)) {
-                            const s = new Date(date); s.setHours(h, m, 0, 0);
-                            const e = new Date(date);
-                            if (m === 0) e.setHours(h, 30, 0, 0); else e.setHours(h + 1, 0, 0, 0);
-                            slots.push({ start: s.toISOString(), end: e.toISOString(), priority: 1 });
-                        }
-                    }
-                }
-                addOptimisticAvailability({ type: 'add', slots });
+                addOptimisticAvailability({ type: 'add', slots: slots.map(s => ({ ...s, priority: 1 })) });
             } else {
-                // Remove all slots for the day
-                for (let h = startHour; h < endHour; h++) {
-                    for (let m = 0; m < 60; m += 30) {
-                        const s = new Date(date); s.setHours(h, m, 0, 0);
-                        const e = new Date(date);
-                        if (m === 0) e.setHours(h, 30, 0, 0); else e.setHours(h + 1, 0, 0, 0);
-                        slots.push({ start: s.toISOString(), end: e.toISOString() });
-                    }
-                }
                 addOptimisticAvailability({ type: 'remove', slots });
             }
 
             try {
-                await bulkToggleAvailability(groupId, dateStr, priority)
+                await updateAvailabilities(groupId, priority === 1 ? 'add' : 'remove', slots)
                 if (priority === null) {
                     toast.success('全ての△を削除しました')
                 } else {
@@ -519,7 +547,46 @@ export function AvailabilityInput({
                             {isLoadingCalendar ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <CalendarIcon className="h-4 w-4 mr-2" />}
                             Gカレンダー更新
                         </Button>
-
+                        {availableCalendars.length > 0 && (
+                            <div className="relative">
+                                <Button variant="outline" size="sm" onClick={() => setShowCalendarPicker(v => !v)}>
+                                    <Settings2 className="h-4 w-4 mr-2" />
+                                    カレンダー選択
+                                    <span className="ml-1 text-xs text-gray-500">({selectedCalendarIds.length}/{availableCalendars.length})</span>
+                                </Button>
+                                {showCalendarPicker && (
+                                    <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-white border rounded-lg shadow-lg p-2 max-h-60 overflow-y-auto">
+                                        <div className="text-xs font-medium text-gray-500 px-2 py-1 mb-1">反映するカレンダーを選択</div>
+                                        {availableCalendars.map(cal => (
+                                            <button
+                                                key={cal.id}
+                                                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-gray-50 text-left"
+                                                onClick={() => toggleCalendar(cal.id)}
+                                            >
+                                                <div className={cn(
+                                                    "w-4 h-4 rounded border flex items-center justify-center shrink-0",
+                                                    selectedCalendarIds.includes(cal.id)
+                                                        ? "bg-blue-600 border-blue-600 text-white"
+                                                        : "border-gray-300"
+                                                )}>
+                                                    {selectedCalendarIds.includes(cal.id) && <Check className="h-3 w-3" />}
+                                                </div>
+                                                {cal.backgroundColor && (
+                                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cal.backgroundColor }} />
+                                                )}
+                                                <span className="truncate">{cal.summary}</span>
+                                                {cal.primary && <span className="text-xs text-gray-400 shrink-0">(メイン)</span>}
+                                            </button>
+                                        ))}
+                                        <div className="border-t mt-1 pt-1">
+                                            <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => { setShowCalendarPicker(false); fetchEvents(); }}>
+                                                選択を反映して更新
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center justify-center gap-2">

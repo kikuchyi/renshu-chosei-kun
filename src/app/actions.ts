@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
-import { listEvents } from '@/utils/google-calendar'
+import { listEvents, listCalendars } from '@/utils/google-calendar'
 
 function generateInviteCode(length: number = 6): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -378,7 +378,24 @@ export async function updateAvailabilities(
 
 
 
-export async function fetchCalendarEvents(start: string, end: string) {
+export async function fetchCalendarList() {
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session?.provider_token) {
+        return { calendars: [], hasToken: false }
+    }
+
+    try {
+        const calendars = await listCalendars(session.provider_token)
+        return { calendars, hasToken: true }
+    } catch (error: any) {
+        console.error('Failed to fetch calendar list:', error)
+        return { calendars: [], hasToken: true, error: error.message }
+    }
+}
+
+export async function fetchCalendarEvents(start: string, end: string, calendarIds?: string[]) {
     const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
@@ -393,7 +410,7 @@ export async function fetchCalendarEvents(start: string, end: string) {
     if (!user) return { events: [], synced: false, syncedCount: 0, hasToken: false, error: 'ユーザーが見つかりません' }
 
     try {
-        const events = await listEvents(session.provider_token, start, end)
+        const events = await listEvents(session.provider_token, start, end, calendarIds)
 
         // 背景で忙しい時間帯を同期する
         const busySlots = events.map(event => {
