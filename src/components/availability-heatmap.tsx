@@ -691,7 +691,7 @@ export function AvailabilityHeatmap({
                         <div className="w-full overflow-x-auto pb-4">
                             <div ref={gridRef} className="min-w-[600px]" style={isDragging ? { touchAction: 'none' } : undefined}>
                                 {/* Header Row */}
-                                <div className="grid grid-cols-8 gap-1 mb-2">
+                                <div className="grid grid-cols-9 gap-1 mb-2">
                                     <div className="p-2 text-center text-gray-500 text-xs font-medium pt-8">
                                         時間
                                     </div>
@@ -708,11 +708,14 @@ export function AvailabilityHeatmap({
                                             </div>
                                         </div>
                                     ))}
+                                    <div className="p-2 text-center text-gray-500 text-xs font-medium pt-8">
+                                        時間
+                                    </div>
                                 </div>
                                 {/* Heatmap Grid */}
                                 <div className="space-y-px">
                                     {timeSlots.map(({ hour, minute }) => (
-                                        <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1">
+                                        <div key={`${hour}-${minute}`} className="grid grid-cols-9 gap-1">
                                             <div className="p-1 text-right text-[10px] text-gray-400 font-mono -mt-2 pr-2">
                                                 {minute === 0 ? `${hour}:00` : `${hour}:30`}
                                             </div>
@@ -760,6 +763,9 @@ export function AvailabilityHeatmap({
                                                     </div>
                                                 )
                                             })}
+                                            <div className="p-1 text-left text-[10px] text-gray-400 font-mono -mt-2 pl-2">
+                                                {minute === 0 ? `${hour}:00` : `${hour}:30`}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

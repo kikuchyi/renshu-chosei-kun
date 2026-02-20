@@ -608,7 +608,7 @@ export function AvailabilityInput({
             <CardContent>
                 <div className="w-full overflow-x-auto pb-4">
                     <div ref={gridRef} className="min-w-[700px]" style={isDragging ? { touchAction: 'none' } : undefined}>
-                        <div className="grid grid-cols-8 gap-1 mb-2">
+                        <div className="grid grid-cols-9 gap-1 mb-2">
                             <div className="text-xs text-gray-500 text-center pt-2">時間</div>
                             {weekDays.map(day => (
                                 <div key={day.toString()} className={cn(
@@ -641,11 +641,12 @@ export function AvailabilityInput({
                                     </div>
                                 </div>
                             ))}
+                            <div className="text-xs text-gray-500 text-center pt-2">時間</div>
                         </div>
 
                         <div className="space-y-px">
                             {timeSlots.map(({ hour, minute }) => (
-                                <div key={`${hour}-${minute}`} className="grid grid-cols-8 gap-1 h-7">
+                                <div key={`${hour}-${minute}`} className="grid grid-cols-9 gap-1 h-7">
                                     <div className="text-[10px] text-gray-400 text-center flex items-center justify-center font-mono">
                                         {minute === 0 ? `${hour}:00` : `${hour}:30`}
                                     </div>
@@ -689,6 +690,9 @@ export function AvailabilityInput({
                                             </button>
                                         )
                                     })}
+                                    <div className="text-[10px] text-gray-400 text-center flex items-center justify-center font-mono">
+                                        {minute === 0 ? `${hour}:00` : `${hour}:30`}
+                                    </div>
                                 </div>
                             ))}
                         </div>
