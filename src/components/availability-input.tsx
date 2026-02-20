@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useTransition, useEffect, useOptimistic, useRef } from 'react'
-import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, getHours, set } from 'date-fns'
+import { format, addDays, startOfWeek, addWeeks, subWeeks, addMonths, subMonths, isSameDay, getHours, set } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import {
     toggleAvailability,
@@ -12,7 +12,7 @@ import {
 import { signInWithGoogle } from '@/app/login/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RefreshCw, Settings2, Check, LogIn } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar as CalendarIcon, RefreshCw, Settings2, Check, LogIn } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Database } from '@/types/supabase'
@@ -123,6 +123,8 @@ export function AvailabilityInput({
 
     const handlePrevWeek = () => onDateChange(prev => subWeeks(prev, 1))
     const handleNextWeek = () => onDateChange(prev => addWeeks(prev, 1))
+    const handlePrevMonth = () => onDateChange(prev => subMonths(prev, 1))
+    const handleNextMonth = () => onDateChange(prev => addMonths(prev, 1))
 
     // Fetch calendar list on mount
     useEffect(() => {
@@ -593,15 +595,21 @@ export function AvailabilityInput({
                         )}
                     </div>
                 </div>
-                <div className="flex items-center justify-center gap-2">
-                    <Button variant="outline" size="icon" onClick={handlePrevWeek}>
+                <div className="flex items-center justify-center gap-1">
+                    <Button variant="outline" size="icon" onClick={handlePrevMonth} title="1ヶ月前">
+                        <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={handlePrevWeek} title="1週間前">
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <span className="text-sm font-medium whitespace-nowrap">
                         {format(startOfCurrentWeek, 'M月d日', { locale: ja })} - {format(addDays(startOfCurrentWeek, 6), 'M月d日', { locale: ja })}
                     </span>
-                    <Button variant="outline" size="icon" onClick={handleNextWeek}>
+                    <Button variant="outline" size="icon" onClick={handleNextWeek} title="1週間後">
                         <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={handleNextMonth} title="1ヶ月後">
+                        <ChevronsRight className="h-4 w-4" />
                     </Button>
                 </div>
             </CardHeader>
