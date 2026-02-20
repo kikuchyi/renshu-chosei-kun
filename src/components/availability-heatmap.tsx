@@ -806,7 +806,7 @@ export function AvailabilityHeatmap({
                                             <div
                                                 key={i}
                                                 className={cn(
-                                                    "min-h-[80px] p-1.5 rounded-lg border flex flex-col transition-colors cursor-pointer hover:bg-gray-50",
+                                                    "min-h-[80px] p-1.5 rounded-lg border flex flex-col transition-colors cursor-pointer hover:bg-gray-50 overflow-visible",
                                                     isCurrentMonth ? "bg-white border-gray-200" : "bg-gray-50 border-gray-100 opacity-40",
                                                     isToday && "ring-2 ring-blue-500"
                                                 )}
@@ -823,11 +823,11 @@ export function AvailabilityHeatmap({
                                                     {format(day, 'd')}
                                                 </div>
                                                 {mergedEvents.length > 0 && (
-                                                    <div className="space-y-0.5 flex-1">
+                                                    <div className="space-y-0.5 flex-1 overflow-visible">
                                                         {mergedEvents.map((event, j) => (
                                                             <div
                                                                 key={j}
-                                                                className="bg-green-500 text-white text-[8px] leading-tight px-0.5 py-px rounded font-medium whitespace-nowrap"
+                                                                className="bg-green-500 text-white text-[8px] leading-tight px-0.5 py-px rounded font-medium whitespace-nowrap overflow-visible z-10 relative"
                                                             >
                                                                 {format(event.start, 'H:mm')}-{format(event.end, 'H:mm')}
                                                             </div>
