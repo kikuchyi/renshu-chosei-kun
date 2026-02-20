@@ -607,7 +607,7 @@ export function AvailabilityInput({
             </CardHeader>
             <CardContent>
                 <div className="w-full overflow-x-auto pb-4">
-                    <div ref={gridRef} className="min-w-[700px]" style={isDragging ? { touchAction: 'none' } : undefined}>
+                    <div ref={gridRef} className="min-w-[600px]" style={isDragging ? { touchAction: 'none' } : undefined}>
                         <div className="grid grid-cols-9 gap-1 mb-2">
                             <div className="text-xs text-gray-500 text-center pt-2">時間</div>
                             {weekDays.map(day => (
